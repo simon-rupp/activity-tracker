@@ -1,0 +1,53 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Exercise {
+  id        Int        @id @default(autoincrement())
+  name      String     @unique
+  createdAt DateTime   @default(now())
+  entries   LiftEntry[]
+}
+
+model LiftSession {
+  id        Int        @id @default(autoincrement())
+  date      String
+  title     String
+  notes     String?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  entries   LiftEntry[]
+
+  @@index([date])
+}
+
+model LiftEntry {
+  id            Int         @id @default(autoincrement())
+  liftSessionId Int
+  exerciseId    Int
+  sets          Int
+  reps          Int
+  weightTenths  Int
+  order         Int
+  liftSession   LiftSession @relation(fields: [liftSessionId], references: [id], onDelete: Cascade)
+  exercise      Exercise    @relation(fields: [exerciseId], references: [id], onDelete: Restrict)
+
+  @@index([liftSessionId, order])
+}
+
+model RunSession {
+  id                 Int      @id @default(autoincrement())
+  date               String
+  distanceHundredths Int
+  durationSeconds    Int
+  notes              String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([date])
+}
