@@ -14,6 +14,13 @@ model Exercise {
   entries   LiftEntry[]
 }
 
+model MuscleGroup {
+  id        Int                      @id @default(autoincrement())
+  name      String                   @unique
+  createdAt DateTime                 @default(now())
+  entries   LiftEntryMuscleGroup[]
+}
+
 model LiftSession {
   id        Int        @id @default(autoincrement())
   date      String
@@ -27,17 +34,28 @@ model LiftSession {
 }
 
 model LiftEntry {
-  id            Int         @id @default(autoincrement())
+  id            Int                    @id @default(autoincrement())
   liftSessionId Int
   exerciseId    Int
   sets          Int
   reps          Int
   weightTenths  Int
   order         Int
-  liftSession   LiftSession @relation(fields: [liftSessionId], references: [id], onDelete: Cascade)
-  exercise      Exercise    @relation(fields: [exerciseId], references: [id], onDelete: Restrict)
+  liftSession   LiftSession            @relation(fields: [liftSessionId], references: [id], onDelete: Cascade)
+  exercise      Exercise               @relation(fields: [exerciseId], references: [id], onDelete: Restrict)
+  muscleGroups  LiftEntryMuscleGroup[]
 
   @@index([liftSessionId, order])
+}
+
+model LiftEntryMuscleGroup {
+  liftEntryId    Int
+  muscleGroupId  Int
+  liftEntry      LiftEntry    @relation(fields: [liftEntryId], references: [id], onDelete: Cascade)
+  muscleGroup    MuscleGroup  @relation(fields: [muscleGroupId], references: [id], onDelete: Restrict)
+
+  @@id([liftEntryId, muscleGroupId])
+  @@index([muscleGroupId])
 }
 
 model RunSession {

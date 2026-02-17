@@ -18,13 +18,22 @@ export default async function NewLiftPage({ searchParams }: NewLiftPageProps) {
       ? params.date
       : todayDateString();
 
-  const exercises = await prisma.exercise.findMany({
+  const [exercises, muscleGroups] = await Promise.all([
+    prisma.exercise.findMany({
     orderBy: { name: "asc" },
     select: {
       id: true,
       name: true,
     },
-  });
+    }),
+    prisma.muscleGroup.findMany({
+      orderBy: { name: "asc" },
+      select: {
+        id: true,
+        name: true,
+      },
+    }),
+  ]);
 
   return (
     <section className="space-y-6">
@@ -38,12 +47,15 @@ export default async function NewLiftPage({ searchParams }: NewLiftPageProps) {
       <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
         <LiftForm
           exercises={exercises}
+          muscleGroups={muscleGroups}
           defaultDate={requestedDate}
           defaultTitle=""
           defaultNotes=""
           defaultEntries={[
             {
               exerciseName: "",
+              muscleGroups: [],
+              muscleGroupInput: "",
               sets: "",
               reps: "",
               weightLbs: "",
