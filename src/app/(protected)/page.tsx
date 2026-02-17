@@ -243,6 +243,7 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
                 ? "bg-slate-900 text-white"
                 : "text-slate-700 hover:bg-slate-100"
             }`}
+            style={mobileView === option.value ? { color: "#ffffff" } : undefined}
           >
             {option.label}
           </Link>
