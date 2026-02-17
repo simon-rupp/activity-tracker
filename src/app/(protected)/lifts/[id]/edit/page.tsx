@@ -33,11 +33,12 @@ export default async function EditLiftPage({
       include: {
         entries: {
           orderBy: { order: "asc" },
-          select: {
-            exerciseId: true,
-            sets: true,
-            reps: true,
-            weightTenths: true,
+          include: {
+            exercise: {
+              select: {
+                name: true,
+              },
+            },
           },
         },
       },
@@ -71,9 +72,9 @@ export default async function EditLiftPage({
           defaultTitle={lift.title}
           defaultNotes={lift.notes ?? ""}
           defaultEntries={lift.entries.map((entry) => ({
-            exerciseId: entry.exerciseId,
-            sets: entry.sets,
-            reps: entry.reps,
+            exerciseName: entry.exercise.name,
+            sets: String(entry.sets),
+            reps: String(entry.reps),
             weightLbs: formatWeightFromTenths(entry.weightTenths),
           }))}
           submitLabel="Update Lift"

@@ -1,5 +1,6 @@
 "use server";
 
+import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -22,6 +23,75 @@ function getCalendarRedirect(formData: FormData, fallbackDate: string): string {
   return `/?month=${safeMonth}&day=${safeDay}`;
 }
 
+function normalizeExerciseName(value: string): string {
+  return value.trim().replace(/\s+/g, " ");
+}
+
+function exerciseKey(value: string): string {
+  return normalizeExerciseName(value).toLocaleLowerCase();
+}
+
+async function resolveLiftEntries(
+  tx: Prisma.TransactionClient,
+  entries: ReturnType<typeof parseLiftPayload>["entries"],
+): Promise<
+  Array<{
+    exerciseId: number;
+    sets: number;
+    reps: number;
+    weightTenths: number;
+    order: number;
+  }>
+> {
+  const existingExercises = await tx.exercise.findMany({
+    select: {
+      id: true,
+      name: true,
+    },
+  });
+
+  const exerciseIdsByKey = new Map<string, number>();
+  for (const exercise of existingExercises) {
+    exerciseIdsByKey.set(exerciseKey(exercise.name), exercise.id);
+  }
+
+  const resolvedEntries: Array<{
+    exerciseId: number;
+    sets: number;
+    reps: number;
+    weightTenths: number;
+    order: number;
+  }> = [];
+
+  for (const entry of entries) {
+    const normalizedName = normalizeExerciseName(entry.exerciseName);
+    const key = exerciseKey(normalizedName);
+    let exerciseId = exerciseIdsByKey.get(key);
+
+    if (!exerciseId) {
+      const exercise = await tx.exercise.upsert({
+        where: { name: normalizedName },
+        create: { name: normalizedName },
+        update: {},
+        select: { id: true, name: true },
+      });
+
+      exerciseId = exercise.id;
+      exerciseIdsByKey.set(key, exerciseId);
+    }
+
+    resolvedEntries.push({
+      exerciseId,
+      sets: entry.sets,
+      reps: entry.reps,
+      weightTenths: entry.weightTenths,
+      order: entry.order,
+    });
+  }
+
+  return resolvedEntries;
+}
+
 export async function createLiftAction(formData: FormData) {
   let payload: ReturnType<typeof parseLiftPayload>;
   try {
@@ -30,15 +100,27 @@ export async function createLiftAction(formData: FormData) {
     redirect("/lifts/new?error=invalid");
   }
 
-  await prisma.liftSession.create({
-    data: {
-      date: payload.date,
-      title: payload.title,
-      notes: payload.notes,
-      entries: {
-        create: payload.entries,
+  await prisma.$transaction(async (tx) => {
+    const resolvedEntries = await resolveLiftEntries(tx, payload.entries);
+
+    const liftSession = await tx.liftSession.create({
+      data: {
+        date: payload.date,
+        title: payload.title,
+        notes: payload.notes,
       },
-    },
+    });
+
+    await tx.liftEntry.createMany({
+      data: resolvedEntries.map((entry) => ({
+        liftSessionId: liftSession.id,
+        exerciseId: entry.exerciseId,
+        sets: entry.sets,
+        reps: entry.reps,
+        weightTenths: entry.weightTenths,
+        order: entry.order,
+      })),
+    });
   });
 
   revalidatePath("/");
@@ -58,6 +140,8 @@ export async function updateLiftAction(formData: FormData) {
   }
 
   await prisma.$transaction(async (tx) => {
+    const resolvedEntries = await resolveLiftEntries(tx, payload.entries);
+
     await tx.liftSession.update({
       where: { id },
       data: {
@@ -72,7 +156,7 @@ export async function updateLiftAction(formData: FormData) {
     });
 
     await tx.liftEntry.createMany({
-      data: payload.entries.map((entry) => ({
+      data: resolvedEntries.map((entry) => ({
         liftSessionId: id,
         exerciseId: entry.exerciseId,
         sets: entry.sets,

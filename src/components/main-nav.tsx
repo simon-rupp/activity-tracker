@@ -6,9 +6,6 @@ import { SESSION_COOKIE_NAME } from "@/lib/auth-session";
 
 const links = [
   { href: "/", label: "Calendar" },
-  { href: "/lifts/new", label: "Log Lift" },
-  { href: "/runs/new", label: "Log Run" },
-  { href: "/settings/exercises", label: "Settings" },
 ];
 
 async function logoutAction() {

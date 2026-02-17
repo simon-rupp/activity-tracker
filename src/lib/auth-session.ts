@@ -4,6 +4,14 @@ import crypto from "node:crypto";
 export const SESSION_COOKIE_NAME = "activity_session";
 const SESSION_DURATION_SECONDS = 60 * 60 * 24 * 30;
 
+function isBcryptHash(value: string): boolean {
+  try {
+    return Number.isInteger(bcrypt.getRounds(value));
+  } catch {
+    return false;
+  }
+}
+
 function readEnv(name: "APP_SESSION_SECRET" | "APP_PASSCODE_HASH"): string | null {
   const value = process.env[name];
   return value ? value : null;
@@ -19,7 +27,26 @@ function signPayload(payload: string): string | null {
 }
 
 export function isAuthConfigured(): boolean {
-  return Boolean(readEnv("APP_SESSION_SECRET") && readEnv("APP_PASSCODE_HASH"));
+  return getAuthConfigError() === null;
+}
+
+export function getAuthConfigError(): string | null {
+  const secret = readEnv("APP_SESSION_SECRET");
+  const hash = readEnv("APP_PASSCODE_HASH");
+
+  if (!secret) {
+    return "APP_SESSION_SECRET is missing.";
+  }
+
+  if (!hash) {
+    return "APP_PASSCODE_HASH is missing.";
+  }
+
+  if (!isBcryptHash(hash)) {
+    return "APP_PASSCODE_HASH is malformed. In .env, escape each $ as \\$.";
+  }
+
+  return null;
 }
 
 export function createSessionToken(): string {
@@ -77,6 +104,10 @@ export function isValidSessionToken(token: string | undefined): boolean {
 export async function verifyPasscode(passcode: string): Promise<boolean> {
   const hash = readEnv("APP_PASSCODE_HASH");
   if (!hash) {
+    return false;
+  }
+
+  if (!isBcryptHash(hash)) {
     return false;
   }
 

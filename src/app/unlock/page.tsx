@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import {
   createSessionToken,
+  getAuthConfigError,
   isAuthConfigured,
   isValidSessionToken,
   SESSION_COOKIE_NAME,
@@ -44,6 +45,7 @@ async function unlockAction(formData: FormData) {
 
 export default async function UnlockPage({ searchParams }: UnlockPageProps) {
   const isConfigured = isAuthConfigured();
+  const authConfigError = getAuthConfigError();
   const cookieStore = await cookies();
   const activeToken = cookieStore.get(SESSION_COOKIE_NAME)?.value;
 
@@ -54,13 +56,11 @@ export default async function UnlockPage({ searchParams }: UnlockPageProps) {
   const params = await searchParams;
   const error =
     params.error === "config"
-      ? "Set APP_PASSCODE_HASH and APP_SESSION_SECRET in .env."
+      ? authConfigError ?? "Set APP_PASSCODE_HASH and APP_SESSION_SECRET in .env."
       : params.error
         ? "Invalid passcode."
         : null;
-  const setupMessage = !isConfigured
-    ? "Set APP_PASSCODE_HASH and APP_SESSION_SECRET in .env to enable unlock."
-    : null;
+  const setupMessage = !isConfigured ? authConfigError : null;
 
   return (
     <main className="flex min-h-screen items-center justify-center px-4">

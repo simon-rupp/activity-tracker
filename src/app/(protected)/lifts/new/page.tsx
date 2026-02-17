@@ -1,5 +1,3 @@
-import Link from "next/link";
-
 import { LiftForm } from "@/components/lift-form";
 import { isValidDateString, todayDateString } from "@/lib/date";
 import { prisma } from "@/lib/prisma";
@@ -43,18 +41,14 @@ export default async function NewLiftPage({ searchParams }: NewLiftPageProps) {
           defaultDate={requestedDate}
           defaultTitle=""
           defaultNotes=""
-          defaultEntries={
-            exercises.length > 0
-              ? [
-                  {
-                    exerciseId: exercises[0].id,
-                    sets: 3,
-                    reps: 5,
-                    weightLbs: "0.0",
-                  },
-                ]
-              : []
-          }
+          defaultEntries={[
+            {
+              exerciseName: "",
+              sets: "",
+              reps: "",
+              weightLbs: "",
+            },
+          ]}
           submitLabel="Save Lift"
           formAction={createLiftAction}
           errorMessage={
@@ -62,16 +56,6 @@ export default async function NewLiftPage({ searchParams }: NewLiftPageProps) {
           }
         />
       </div>
-
-      {exercises.length === 0 ? (
-        <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-          No exercises found. Add one in{" "}
-          <Link className="font-semibold underline" href="/settings/exercises">
-            settings
-          </Link>{" "}
-          first.
-        </p>
-      ) : null}
     </section>
   );
 }

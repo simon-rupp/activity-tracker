@@ -35,7 +35,8 @@ cp .env.example .env
 npm run hash:passcode -- your-passcode
 ```
 
-4. Put the output into `.env` as `APP_PASSCODE_HASH`.
+4. Put the escaped output line into `.env` as `APP_PASSCODE_HASH`.
+   Next.js expands `$` in env files, so bcrypt hashes must use `\$`.
 
 5. Set a long random `APP_SESSION_SECRET` in `.env`.
 

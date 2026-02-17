@@ -4,7 +4,7 @@ import { isValidDateString } from "@/lib/date";
 import { parseDurationInput } from "@/lib/format";
 
 const liftEntrySchema = z.object({
-  exerciseId: z.coerce.number().int().positive(),
+  exerciseName: z.string(),
   sets: z.coerce.number().int().positive(),
   reps: z.coerce.number().int().positive(),
   weightLbs: z.union([z.string(), z.number()]),
@@ -28,6 +28,10 @@ function parseWeightTenths(raw: string | number): number {
   }
 
   return Math.round(Number(normalized) * 10);
+}
+
+function normalizeExerciseName(value: string): string {
+  return value.trim().replace(/\s+/g, " ");
 }
 
 function parseDistanceHundredths(raw: string): number {
@@ -61,7 +65,7 @@ export function parseLiftPayload(formData: FormData): {
   title: string;
   notes: string | null;
   entries: Array<{
-    exerciseId: number;
+    exerciseName: string;
     sets: number;
     reps: number;
     weightTenths: number;
@@ -84,13 +88,20 @@ export function parseLiftPayload(formData: FormData): {
     throw new Error("Invalid exercise entries.");
   }
 
-  const parsedEntries = liftEntriesSchema.parse(parsedEntriesInput).map((entry, index) => ({
-    exerciseId: entry.exerciseId,
-    sets: entry.sets,
-    reps: entry.reps,
-    weightTenths: parseWeightTenths(entry.weightLbs),
-    order: index,
-  }));
+  const parsedEntries = liftEntriesSchema.parse(parsedEntriesInput).map((entry, index) => {
+    const exerciseName = normalizeExerciseName(entry.exerciseName);
+    if (!exerciseName) {
+      throw new Error("Exercise name is required.");
+    }
+
+    return {
+      exerciseName,
+      sets: entry.sets,
+      reps: entry.reps,
+      weightTenths: parseWeightTenths(entry.weightLbs),
+      order: index,
+    };
+  });
 
   return {
     date,
