@@ -45,8 +45,12 @@ function normalizeExerciseName(value: string): string {
   return value.trim().replace(/\s+/g, " ");
 }
 
-function exerciseKey(value: string): string {
-  return normalizeExerciseName(value).toLocaleLowerCase();
+function normalizeMuscleGroupName(value: string): string {
+  return value.trim().replace(/\s+/g, " ");
+}
+
+function nameKey(value: string): string {
+  return value.trim().replace(/\s+/g, " ").toLocaleLowerCase();
 }
 
 async function resolveLiftEntries(
@@ -55,6 +59,7 @@ async function resolveLiftEntries(
 ): Promise<
   Array<{
     exerciseId: number;
+    muscleGroupIds: number[];
     sets: number;
     reps: number;
     weightTenths: number;
@@ -70,20 +75,34 @@ async function resolveLiftEntries(
 
   const exerciseIdsByKey = new Map<string, number>();
   for (const exercise of existingExercises) {
-    exerciseIdsByKey.set(exerciseKey(exercise.name), exercise.id);
+    exerciseIdsByKey.set(nameKey(exercise.name), exercise.id);
   }
 
   const resolvedEntries: Array<{
     exerciseId: number;
+    muscleGroupIds: number[];
     sets: number;
     reps: number;
     weightTenths: number;
     order: number;
   }> = [];
 
+
+  const existingMuscleGroups = await tx.muscleGroup.findMany({
+    select: {
+      id: true,
+      name: true,
+    },
+  });
+
+  const muscleGroupIdsByKey = new Map<string, number>();
+  for (const muscleGroup of existingMuscleGroups) {
+    muscleGroupIdsByKey.set(nameKey(muscleGroup.name), muscleGroup.id);
+  }
+
   for (const entry of entries) {
     const normalizedName = normalizeExerciseName(entry.exerciseName);
-    const key = exerciseKey(normalizedName);
+    const key = nameKey(normalizedName);
     let exerciseId = exerciseIdsByKey.get(key);
 
     if (!exerciseId) {
@@ -98,8 +117,32 @@ async function resolveLiftEntries(
       exerciseIdsByKey.set(key, exerciseId);
     }
 
+    const muscleGroupIds: number[] = [];
+    for (const muscleGroupName of entry.muscleGroups) {
+      const normalizedMuscleGroupName = normalizeMuscleGroupName(muscleGroupName);
+      const muscleGroupKey = nameKey(normalizedMuscleGroupName);
+      let muscleGroupId = muscleGroupIdsByKey.get(muscleGroupKey);
+
+      if (!muscleGroupId) {
+        const muscleGroup = await tx.muscleGroup.upsert({
+          where: { name: normalizedMuscleGroupName },
+          create: { name: normalizedMuscleGroupName },
+          update: {},
+          select: { id: true },
+        });
+
+        muscleGroupId = muscleGroup.id;
+        muscleGroupIdsByKey.set(muscleGroupKey, muscleGroupId);
+      }
+
+      if (!muscleGroupIds.includes(muscleGroupId)) {
+        muscleGroupIds.push(muscleGroupId);
+      }
+    }
+
     resolvedEntries.push({
       exerciseId,
+      muscleGroupIds,
       sets: entry.sets,
       reps: entry.reps,
       weightTenths: entry.weightTenths,
@@ -129,16 +172,28 @@ export async function createLiftAction(formData: FormData) {
       },
     });
 
-    await tx.liftEntry.createMany({
-      data: resolvedEntries.map((entry) => ({
-        liftSessionId: liftSession.id,
-        exerciseId: entry.exerciseId,
-        sets: entry.sets,
-        reps: entry.reps,
-        weightTenths: entry.weightTenths,
-        order: entry.order,
-      })),
-    });
+    for (const entry of resolvedEntries) {
+      const liftEntry = await tx.liftEntry.create({
+        data: {
+          liftSessionId: liftSession.id,
+          exerciseId: entry.exerciseId,
+          sets: entry.sets,
+          reps: entry.reps,
+          weightTenths: entry.weightTenths,
+          order: entry.order,
+        },
+        select: { id: true },
+      });
+
+      if (entry.muscleGroupIds.length > 0) {
+        await tx.liftEntryMuscleGroup.createMany({
+          data: entry.muscleGroupIds.map((muscleGroupId) => ({
+            liftEntryId: liftEntry.id,
+            muscleGroupId,
+          })),
+        });
+      }
+    }
   });
 
   revalidatePath("/");
@@ -173,16 +228,28 @@ export async function updateLiftAction(formData: FormData) {
       where: { liftSessionId: id },
     });
 
-    await tx.liftEntry.createMany({
-      data: resolvedEntries.map((entry) => ({
-        liftSessionId: id,
-        exerciseId: entry.exerciseId,
-        sets: entry.sets,
-        reps: entry.reps,
-        weightTenths: entry.weightTenths,
-        order: entry.order,
-      })),
-    });
+    for (const entry of resolvedEntries) {
+      const liftEntry = await tx.liftEntry.create({
+        data: {
+          liftSessionId: id,
+          exerciseId: entry.exerciseId,
+          sets: entry.sets,
+          reps: entry.reps,
+          weightTenths: entry.weightTenths,
+          order: entry.order,
+        },
+        select: { id: true },
+      });
+
+      if (entry.muscleGroupIds.length > 0) {
+        await tx.liftEntryMuscleGroup.createMany({
+          data: entry.muscleGroupIds.map((muscleGroupId) => ({
+            liftEntryId: liftEntry.id,
+            muscleGroupId,
+          })),
+        });
+      }
+    }
   });
 
   revalidatePath("/");

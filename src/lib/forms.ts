@@ -5,6 +5,7 @@ import { parseDurationInput } from "@/lib/format";
 
 const liftEntrySchema = z.object({
   exerciseName: z.string(),
+  muscleGroups: z.array(z.string()),
   sets: z.coerce.number().int().positive(),
   reps: z.coerce.number().int().positive(),
   weightLbs: z.union([z.string(), z.number()]),
@@ -31,6 +32,10 @@ function parseWeightTenths(raw: string | number): number {
 }
 
 function normalizeExerciseName(value: string): string {
+  return value.trim().replace(/\s+/g, " ");
+}
+
+function normalizeMuscleGroupName(value: string): string {
   return value.trim().replace(/\s+/g, " ");
 }
 
@@ -66,6 +71,7 @@ export function parseLiftPayload(formData: FormData): {
   notes: string | null;
   entries: Array<{
     exerciseName: string;
+    muscleGroups: string[];
     sets: number;
     reps: number;
     weightTenths: number;
@@ -96,6 +102,9 @@ export function parseLiftPayload(formData: FormData): {
 
     return {
       exerciseName,
+      muscleGroups: entry.muscleGroups
+        .map((name) => normalizeMuscleGroupName(name))
+        .filter((name) => name.length > 0),
       sets: entry.sets,
       reps: entry.reps,
       weightTenths: parseWeightTenths(entry.weightLbs),

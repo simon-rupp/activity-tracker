@@ -27,7 +27,7 @@ export default async function EditLiftPage({
     notFound();
   }
 
-  const [lift, exercises] = await Promise.all([
+  const [lift, exercises, muscleGroups] = await Promise.all([
     prisma.liftSession.findUnique({
       where: { id },
       include: {
@@ -39,11 +39,27 @@ export default async function EditLiftPage({
                 name: true,
               },
             },
+            muscleGroups: {
+              include: {
+                muscleGroup: {
+                  select: {
+                    name: true,
+                  },
+                },
+              },
+            },
           },
         },
       },
     }),
     prisma.exercise.findMany({
+      orderBy: { name: "asc" },
+      select: {
+        id: true,
+        name: true,
+      },
+    }),
+    prisma.muscleGroup.findMany({
       orderBy: { name: "asc" },
       select: {
         id: true,
@@ -68,11 +84,14 @@ export default async function EditLiftPage({
           id={lift.id}
           returnTo={`/lifts/${lift.id}/edit`}
           exercises={exercises}
+          muscleGroups={muscleGroups}
           defaultDate={lift.date}
           defaultTitle={lift.title}
           defaultNotes={lift.notes ?? ""}
           defaultEntries={lift.entries.map((entry) => ({
             exerciseName: entry.exercise.name,
+            muscleGroups: entry.muscleGroups.map((muscleGroup) => muscleGroup.muscleGroup.name),
+            muscleGroupInput: "",
             sets: String(entry.sets),
             reps: String(entry.reps),
             weightLbs: formatWeightFromTenths(entry.weightTenths),
