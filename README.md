@@ -12,7 +12,7 @@ Single-user workout tracker for lifts and runs with:
 
 - Next.js 16 + TypeScript
 - Prisma ORM
-- SQLite (local dev)
+- PostgreSQL
 - Tailwind CSS 4
 
 ## Local Setup
@@ -29,28 +29,53 @@ npm install
 cp .env.example .env
 ```
 
-3. Generate a passcode hash:
+3. Set `DATABASE_URL` in `.env` to a PostgreSQL database.
+
+4. Generate a passcode hash:
 
 ```bash
 npm run hash:passcode -- your-passcode
 ```
 
-4. Put the escaped output line into `.env` as `APP_PASSCODE_HASH`.
+5. Put the escaped output line into `.env` as `APP_PASSCODE_HASH`.
    Next.js expands `$` in env files, so bcrypt hashes must use `\$`.
 
-5. Set a long random `APP_SESSION_SECRET` in `.env`.
+6. Set a long random `APP_SESSION_SECRET` in `.env`.
 
-6. Run the initial migration:
+7. Apply migrations:
 
 ```bash
-npm run prisma:migrate -- --name init
+npm run prisma:migrate
 ```
 
-7. Start the app:
+8. Start the app:
 
 ```bash
 npm run dev
 ```
+
+## Deploying To Vercel + Prisma Postgres
+
+1. Create a Vercel project from this repo.
+2. Add Prisma Postgres through the Vercel Marketplace and connect it to the project.
+3. Configure environment variables in Vercel:
+   - `DATABASE_URL`
+   - `APP_PASSCODE_HASH`
+   - `APP_SESSION_SECRET`
+4. Set build command to:
+
+```bash
+npm run vercel-build
+```
+
+5. Deploy. Build runs:
+   - `prisma generate`
+   - `prisma migrate deploy`
+   - `next build`
+
+Recommended environment split:
+- Production environment uses a production DB.
+- Preview environment uses a separate preview DB.
 
 ## Precision Rules
 
