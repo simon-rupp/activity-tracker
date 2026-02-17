@@ -13,14 +13,32 @@ function getFormString(formData: FormData, name: string): string | null {
   return typeof value === "string" ? value : null;
 }
 
+function getCalendarView(value: string | null): "3d" | "week" | "month" | null {
+  if (value === "3d" || value === "week" || value === "month") {
+    return value;
+  }
+
+  return null;
+}
+
 function getCalendarRedirect(formData: FormData, fallbackDate: string): string {
   const month = getFormString(formData, "redirectMonth");
   const day = getFormString(formData, "redirectDay");
+  const view = getCalendarView(getFormString(formData, "redirectView"));
 
   const safeMonth = month && /^\d{4}-\d{2}$/.test(month) ? month : monthFromDateString(fallbackDate);
   const safeDay = day && /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : fallbackDate;
 
-  return `/?month=${safeMonth}&day=${safeDay}`;
+  const params = new URLSearchParams({
+    month: safeMonth,
+    day: safeDay,
+  });
+
+  if (view) {
+    params.set("view", view);
+  }
+
+  return `/?${params.toString()}`;
 }
 
 function normalizeExerciseName(value: string): string {
