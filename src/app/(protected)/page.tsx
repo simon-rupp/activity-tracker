@@ -16,6 +16,7 @@ import {
   formatWeightFromTenths,
 } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
+import { resolveRequestTimeZone } from "@/lib/request-timezone";
 
 import { deleteLiftAction } from "@/app/(protected)/lifts/actions";
 import { deleteRunAction } from "@/app/(protected)/runs/actions";
@@ -93,11 +94,12 @@ function getDaySummary(summaryMap: Map<string, DaySummary>, date: string): DaySu
 
 export default async function CalendarPage({ searchParams }: CalendarPageProps) {
   const params = await searchParams;
-  const month = normalizeMonth(readParam(params.month));
+  const requestTimeZone = await resolveRequestTimeZone();
+  const today = todayDateString(requestTimeZone);
+  const month = normalizeMonth(readParam(params.month), today);
   const dayFromQuery = readParam(params.day);
   const mobileView = parseMobileView(params.view);
   const { start, end, firstWeekday, daysInMonth } = getMonthBounds(month);
-  const today = todayDateString();
   const fallbackSelectedDay = isDateInMonth(today, month) ? today : start;
   const selectedDay =
     dayFromQuery && isValidDateString(dayFromQuery) && isDateInMonth(dayFromQuery, month)

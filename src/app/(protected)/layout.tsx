@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { MainNav } from "@/components/main-nav";
+import { TimeZoneCookieSync } from "@/components/time-zone-cookie-sync";
 import { isValidSessionToken, SESSION_COOKIE_NAME } from "@/lib/auth-session";
 
 export default async function ProtectedLayout({
@@ -20,6 +21,7 @@ export default async function ProtectedLayout({
     <div className="min-h-screen">
       <MainNav />
       <main className="mx-auto w-full max-w-6xl px-4 py-6">{children}</main>
+      <TimeZoneCookieSync />
     </div>
   );
 }

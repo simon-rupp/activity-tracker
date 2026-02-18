@@ -1,4 +1,5 @@
 import { isValidDateString, todayDateString } from "@/lib/date";
+import { resolveRequestTimeZone } from "@/lib/request-timezone";
 
 import { createRunAction } from "@/app/(protected)/runs/actions";
 
@@ -11,10 +12,11 @@ type NewRunPageProps = {
 
 export default async function NewRunPage({ searchParams }: NewRunPageProps) {
   const params = await searchParams;
+  const requestTimeZone = await resolveRequestTimeZone();
   const requestedDate =
     params.date && isValidDateString(params.date)
       ? params.date
-      : todayDateString();
+      : todayDateString(requestTimeZone);
 
   return (
     <section className="space-y-6">
