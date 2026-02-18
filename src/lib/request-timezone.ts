@@ -1,6 +1,8 @@
+import "server-only";
+
 import { cookies, headers } from "next/headers";
 
-export const TIME_ZONE_COOKIE_NAME = "activity_tracker_tz";
+import { TIME_ZONE_COOKIE_NAME } from "@/lib/time-zone";
 
 const HEADER_CANDIDATES = ["x-time-zone", "x-vercel-ip-timezone"];
 

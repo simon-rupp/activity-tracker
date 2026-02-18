@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
-import { TIME_ZONE_COOKIE_NAME } from "@/lib/request-timezone";
+import { TIME_ZONE_COOKIE_NAME } from "@/lib/time-zone";
 
 const ONE_YEAR_IN_SECONDS = 60 * 60 * 24 * 365;
 
