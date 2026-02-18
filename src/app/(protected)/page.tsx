@@ -133,6 +133,7 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
     Math.min(daysInMonth, selectedDayNumber + mobileWindowSize),
   );
   const mobileWindowLabel = mobileView === "week" ? "Week" : "3 Days";
+  const isWeekMobileView = mobileView === "week";
 
   const [lifts, runs] = await Promise.all([
     prisma.liftSession.findMany({
@@ -298,49 +299,84 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
             )}
           </div>
 
-          <div className="space-y-2">
-            {mobileWindowDates.map((mobileDate) => {
-              const summary = summaryMap.get(mobileDate.date);
-              const isSelected = mobileDate.date === selectedDay;
+          <div className="pb-1">
+            <div className={`grid ${isWeekMobileView ? "grid-cols-7 gap-1" : "grid-cols-3 gap-2"}`}>
+              {mobileWindowDates.map((mobileDate) => {
+                const summary = summaryMap.get(mobileDate.date);
+                const isSelected = mobileDate.date === selectedDay;
+                const weekdayLabel = isWeekMobileView
+                  ? mobileDate.weekday.slice(0, 1)
+                  : mobileDate.weekday;
 
-              return (
-                <Link
-                  key={mobileDate.date}
-                  href={buildCalendarHref(month, mobileDate.date, mobileView)}
-                  className={`flex items-start justify-between gap-3 rounded-md border px-3 py-2 ${
-                    isSelected
-                      ? "border-slate-900 bg-slate-100"
-                      : "border-slate-200 bg-white hover:border-slate-300"
-                  }`}
-                >
-                  <div>
-                    <p className="text-xs uppercase tracking-wide text-slate-500">
-                      {mobileDate.weekday}
-                    </p>
-                    <p className="text-sm font-semibold text-slate-900">{mobileDate.date}</p>
-                  </div>
+                return (
+                  <Link
+                    key={mobileDate.date}
+                    href={buildCalendarHref(month, mobileDate.date, mobileView)}
+                    className={`rounded-md border ${
+                      isWeekMobileView ? "min-h-28 p-1.5" : "min-h-40 p-2"
+                    } ${
+                      isSelected
+                        ? "border-slate-900 bg-slate-100"
+                        : "border-slate-200 bg-white hover:border-slate-300"
+                    }`}
+                  >
+                    <div className={`border-b border-slate-200 ${isWeekMobileView ? "pb-0.5" : "pb-1"}`}>
+                      <p
+                        className={`font-semibold uppercase tracking-wide text-slate-500 ${
+                          isWeekMobileView ? "text-[9px]" : "text-[11px]"
+                        }`}
+                      >
+                        {weekdayLabel}
+                      </p>
+                      <p
+                        className={`font-bold leading-none text-slate-900 ${
+                          isWeekMobileView ? "text-sm" : "text-lg"
+                        }`}
+                      >
+                        {mobileDate.dayNumber}
+                      </p>
+                    </div>
 
-                  <div className="text-right text-xs text-slate-600">
-                    {summary ? (
-                      <>
-                        {summary.liftCount > 0 ? <p>Lifts: {summary.liftCount}</p> : null}
-                        {summary.runCount > 0 ? <p>Runs: {summary.runCount}</p> : null}
-                        {summary.milesHundredths > 0 ? (
-                          <p>{formatMilesFromHundredths(summary.milesHundredths)} mi</p>
-                        ) : null}
-                        {summary.liftTitles[0] ? (
-                          <p className="max-w-36 truncate font-medium">
-                            {summary.liftTitles[0]}
-                          </p>
-                        ) : null}
-                      </>
+                    {isWeekMobileView ? (
+                      <div className="mt-1 space-y-0.5 text-[9px] text-slate-600">
+                        {summary ? (
+                          <>
+                            {summary.liftCount > 0 ? (
+                              <p className="font-medium text-slate-700">L{summary.liftCount}</p>
+                            ) : null}
+                            {summary.runCount > 0 ? (
+                              <p className="font-medium text-slate-700">R{summary.runCount}</p>
+                            ) : null}
+                            {summary.liftCount === 0 && summary.runCount === 0 ? (
+                              <p className="text-slate-400">-</p>
+                            ) : null}
+                          </>
+                        ) : (
+                          <p className="text-slate-400">-</p>
+                        )}
+                      </div>
                     ) : (
-                      <p>No activity</p>
+                      <div className="mt-2 space-y-1 text-[11px] text-slate-600">
+                        {summary ? (
+                          <>
+                            {summary.liftCount > 0 ? <p>Lifts: {summary.liftCount}</p> : null}
+                            {summary.runCount > 0 ? <p>Runs: {summary.runCount}</p> : null}
+                            {summary.milesHundredths > 0 ? (
+                              <p>{formatMilesFromHundredths(summary.milesHundredths)} mi</p>
+                            ) : null}
+                            {summary.liftTitles[0] ? (
+                              <p className="truncate font-medium">{summary.liftTitles[0]}</p>
+                            ) : null}
+                          </>
+                        ) : (
+                          <p className="text-slate-400">No activity</p>
+                        )}
+                      </div>
                     )}
-                  </div>
-                </Link>
-              );
-            })}
+                  </Link>
+                );
+              })}
+            </div>
           </div>
         </div>
       ) : null}
