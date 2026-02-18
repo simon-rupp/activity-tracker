@@ -1,6 +1,7 @@
 import { LiftForm } from "@/components/lift-form";
 import { isValidDateString, todayDateString } from "@/lib/date";
 import { prisma } from "@/lib/prisma";
+import { resolveRequestTimeZone } from "@/lib/request-timezone";
 
 import { createLiftAction } from "@/app/(protected)/lifts/actions";
 
@@ -13,10 +14,11 @@ type NewLiftPageProps = {
 
 export default async function NewLiftPage({ searchParams }: NewLiftPageProps) {
   const params = await searchParams;
+  const requestTimeZone = await resolveRequestTimeZone();
   const requestedDate =
     params.date && isValidDateString(params.date)
       ? params.date
-      : todayDateString();
+      : todayDateString(requestTimeZone);
 
   const [exercises, muscleGroups] = await Promise.all([
     prisma.exercise.findMany({

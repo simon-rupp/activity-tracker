@@ -6,8 +6,43 @@ export function formatDateString(year: number, month: number, day: number): stri
   return `${year}-${padDatePart(month)}-${padDatePart(day)}`;
 }
 
-export function todayDateString(): string {
+function getDatePartsInTimeZone(date: Date, timeZone: string): {
+  year: number;
+  month: number;
+  day: number;
+} | null {
+  try {
+    const formatter = new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
+
+    const parts = formatter.formatToParts(date);
+    const year = Number(parts.find((part) => part.type === "year")?.value);
+    const month = Number(parts.find((part) => part.type === "month")?.value);
+    const day = Number(parts.find((part) => part.type === "day")?.value);
+
+    if (Number.isNaN(year) || Number.isNaN(month) || Number.isNaN(day)) {
+      return null;
+    }
+
+    return { year, month, day };
+  } catch {
+    return null;
+  }
+}
+
+export function todayDateString(timeZone?: string): string {
   const now = new Date();
+  if (timeZone) {
+    const dateParts = getDatePartsInTimeZone(now, timeZone);
+    if (dateParts) {
+      return formatDateString(dateParts.year, dateParts.month, dateParts.day);
+    }
+  }
+
   return formatDateString(now.getFullYear(), now.getMonth() + 1, now.getDate());
 }
 
@@ -29,14 +64,17 @@ export function monthFromDateString(date: string): string {
   return date.slice(0, 7);
 }
 
-export function normalizeMonth(month: string | undefined): string {
+export function normalizeMonth(
+  month: string | undefined,
+  fallbackDate: string = todayDateString(),
+): string {
   if (!month || !/^\d{4}-\d{2}$/.test(month)) {
-    return monthFromDateString(todayDateString());
+    return monthFromDateString(fallbackDate);
   }
 
   const [year, monthNumber] = month.split("-").map(Number);
   if (monthNumber < 1 || monthNumber > 12) {
-    return monthFromDateString(todayDateString());
+    return monthFromDateString(fallbackDate);
   }
 
   return `${year}-${padDatePart(monthNumber)}`;
