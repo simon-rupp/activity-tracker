@@ -63,6 +63,17 @@ function buildCalendarHref(month: string, day: string, view: MobileCalendarView)
   return `/?${params.toString()}`;
 }
 
+function shiftDateString(date: string, deltaDays: number): string {
+  const [year, month, day] = date.split("-").map(Number);
+  const shifted = new Date(year, month - 1, day + deltaDays);
+
+  return formatDateString(
+    shifted.getFullYear(),
+    shifted.getMonth() + 1,
+    shifted.getDate(),
+  );
+}
+
 function getDaySummary(summaryMap: Map<string, DaySummary>, date: string): DaySummary {
   const existing = summaryMap.get(date);
   if (existing) {
@@ -120,19 +131,18 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
             }),
           };
         });
-  const canShiftMobileWindowBack = selectedDayNumber > 1;
-  const canShiftMobileWindowForward = selectedDayNumber < daysInMonth;
-  const previousMobileWindowDay = formatDateString(
-    year,
-    monthNumber,
-    Math.max(1, selectedDayNumber - mobileWindowSize),
+  const previousMobileWindowDay = shiftDateString(selectedDay, -mobileWindowSize);
+  const nextMobileWindowDay = shiftDateString(selectedDay, mobileWindowSize);
+  const previousMobileWindowHref = buildCalendarHref(
+    previousMobileWindowDay.slice(0, 7),
+    previousMobileWindowDay,
+    mobileView,
   );
-  const nextMobileWindowDay = formatDateString(
-    year,
-    monthNumber,
-    Math.min(daysInMonth, selectedDayNumber + mobileWindowSize),
+  const nextMobileWindowHref = buildCalendarHref(
+    nextMobileWindowDay.slice(0, 7),
+    nextMobileWindowDay,
+    mobileView,
   );
-  const mobileWindowLabel = mobileView === "week" ? "Week" : "3 Days";
   const isWeekMobileView = mobileView === "week";
 
   const [lifts, runs] = await Promise.all([
@@ -255,48 +265,20 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
         <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm md:hidden">
           <div className="flex items-center justify-between gap-2">
             <Link
-              href={previousMonthHref}
+              href={previousMobileWindowHref}
               className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
             >
-              Prev Month
+              Prev
             </Link>
 
             <h2 className="text-sm font-semibold text-slate-900">{monthLabel}</h2>
 
             <Link
-              href={nextMonthHref}
+              href={nextMobileWindowHref}
               className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
             >
-              Next Month
+              Next
             </Link>
-          </div>
-
-          <div className="flex items-center justify-between gap-2">
-            {canShiftMobileWindowBack ? (
-              <Link
-                href={buildCalendarHref(month, previousMobileWindowDay, mobileView)}
-                className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
-              >
-                Prev {mobileWindowLabel}
-              </Link>
-            ) : (
-              <span className="rounded-md border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-400">
-                Prev {mobileWindowLabel}
-              </span>
-            )}
-
-            {canShiftMobileWindowForward ? (
-              <Link
-                href={buildCalendarHref(month, nextMobileWindowDay, mobileView)}
-                className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
-              >
-                Next {mobileWindowLabel}
-              </Link>
-            ) : (
-              <span className="rounded-md border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-400">
-                Next {mobileWindowLabel}
-              </span>
-            )}
           </div>
 
           <div className="pb-1">
