@@ -63,6 +63,17 @@ function buildCalendarHref(month: string, day: string, view: MobileCalendarView)
   return `/?${params.toString()}`;
 }
 
+function shiftDateString(date: string, deltaDays: number): string {
+  const [year, month, day] = date.split("-").map(Number);
+  const shifted = new Date(year, month - 1, day + deltaDays);
+
+  return formatDateString(
+    shifted.getFullYear(),
+    shifted.getMonth() + 1,
+    shifted.getDate(),
+  );
+}
+
 function getDaySummary(summaryMap: Map<string, DaySummary>, date: string): DaySummary {
   const existing = summaryMap.get(date);
   if (existing) {
@@ -120,19 +131,19 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
             }),
           };
         });
-  const canShiftMobileWindowBack = selectedDayNumber > 1;
-  const canShiftMobileWindowForward = selectedDayNumber < daysInMonth;
-  const previousMobileWindowDay = formatDateString(
-    year,
-    monthNumber,
-    Math.max(1, selectedDayNumber - mobileWindowSize),
+  const previousMobileWindowDay = shiftDateString(selectedDay, -mobileWindowSize);
+  const nextMobileWindowDay = shiftDateString(selectedDay, mobileWindowSize);
+  const previousMobileWindowHref = buildCalendarHref(
+    previousMobileWindowDay.slice(0, 7),
+    previousMobileWindowDay,
+    mobileView,
   );
-  const nextMobileWindowDay = formatDateString(
-    year,
-    monthNumber,
-    Math.min(daysInMonth, selectedDayNumber + mobileWindowSize),
+  const nextMobileWindowHref = buildCalendarHref(
+    nextMobileWindowDay.slice(0, 7),
+    nextMobileWindowDay,
+    mobileView,
   );
-  const mobileWindowLabel = mobileView === "week" ? "Week" : "3 Days";
+  const isWeekMobileView = mobileView === "week";
 
   const [lifts, runs] = await Promise.all([
     prisma.liftSession.findMany({
@@ -254,93 +265,100 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
         <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm md:hidden">
           <div className="flex items-center justify-between gap-2">
             <Link
-              href={previousMonthHref}
+              href={previousMobileWindowHref}
               className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
             >
-              Prev Month
+              Prev
             </Link>
 
             <h2 className="text-sm font-semibold text-slate-900">{monthLabel}</h2>
 
             <Link
-              href={nextMonthHref}
+              href={nextMobileWindowHref}
               className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
             >
-              Next Month
+              Next
             </Link>
           </div>
 
-          <div className="flex items-center justify-between gap-2">
-            {canShiftMobileWindowBack ? (
-              <Link
-                href={buildCalendarHref(month, previousMobileWindowDay, mobileView)}
-                className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
-              >
-                Prev {mobileWindowLabel}
-              </Link>
-            ) : (
-              <span className="rounded-md border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-400">
-                Prev {mobileWindowLabel}
-              </span>
-            )}
+          <div className="pb-1">
+            <div className={`grid ${isWeekMobileView ? "grid-cols-7 gap-1" : "grid-cols-3 gap-2"}`}>
+              {mobileWindowDates.map((mobileDate) => {
+                const summary = summaryMap.get(mobileDate.date);
+                const isSelected = mobileDate.date === selectedDay;
+                const weekdayLabel = isWeekMobileView
+                  ? mobileDate.weekday.slice(0, 1)
+                  : mobileDate.weekday;
 
-            {canShiftMobileWindowForward ? (
-              <Link
-                href={buildCalendarHref(month, nextMobileWindowDay, mobileView)}
-                className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
-              >
-                Next {mobileWindowLabel}
-              </Link>
-            ) : (
-              <span className="rounded-md border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-400">
-                Next {mobileWindowLabel}
-              </span>
-            )}
-          </div>
+                return (
+                  <Link
+                    key={mobileDate.date}
+                    href={buildCalendarHref(month, mobileDate.date, mobileView)}
+                    className={`rounded-md border ${
+                      isWeekMobileView ? "min-h-28 p-1.5" : "min-h-40 p-2"
+                    } ${
+                      isSelected
+                        ? "border-slate-900 bg-slate-100"
+                        : "border-slate-200 bg-white hover:border-slate-300"
+                    }`}
+                  >
+                    <div className={`border-b border-slate-200 ${isWeekMobileView ? "pb-0.5" : "pb-1"}`}>
+                      <p
+                        className={`font-semibold uppercase tracking-wide text-slate-500 ${
+                          isWeekMobileView ? "text-[9px]" : "text-[11px]"
+                        }`}
+                      >
+                        {weekdayLabel}
+                      </p>
+                      <p
+                        className={`font-bold leading-none text-slate-900 ${
+                          isWeekMobileView ? "text-sm" : "text-lg"
+                        }`}
+                      >
+                        {mobileDate.dayNumber}
+                      </p>
+                    </div>
 
-          <div className="space-y-2">
-            {mobileWindowDates.map((mobileDate) => {
-              const summary = summaryMap.get(mobileDate.date);
-              const isSelected = mobileDate.date === selectedDay;
-
-              return (
-                <Link
-                  key={mobileDate.date}
-                  href={buildCalendarHref(month, mobileDate.date, mobileView)}
-                  className={`flex items-start justify-between gap-3 rounded-md border px-3 py-2 ${
-                    isSelected
-                      ? "border-slate-900 bg-slate-100"
-                      : "border-slate-200 bg-white hover:border-slate-300"
-                  }`}
-                >
-                  <div>
-                    <p className="text-xs uppercase tracking-wide text-slate-500">
-                      {mobileDate.weekday}
-                    </p>
-                    <p className="text-sm font-semibold text-slate-900">{mobileDate.date}</p>
-                  </div>
-
-                  <div className="text-right text-xs text-slate-600">
-                    {summary ? (
-                      <>
-                        {summary.liftCount > 0 ? <p>Lifts: {summary.liftCount}</p> : null}
-                        {summary.runCount > 0 ? <p>Runs: {summary.runCount}</p> : null}
-                        {summary.milesHundredths > 0 ? (
-                          <p>{formatMilesFromHundredths(summary.milesHundredths)} mi</p>
-                        ) : null}
-                        {summary.liftTitles[0] ? (
-                          <p className="max-w-36 truncate font-medium">
-                            {summary.liftTitles[0]}
-                          </p>
-                        ) : null}
-                      </>
+                    {isWeekMobileView ? (
+                      <div className="mt-1 space-y-0.5 text-[9px] text-slate-600">
+                        {summary ? (
+                          <>
+                            {summary.liftCount > 0 ? (
+                              <p className="font-medium text-slate-700">L{summary.liftCount}</p>
+                            ) : null}
+                            {summary.runCount > 0 ? (
+                              <p className="font-medium text-slate-700">R{summary.runCount}</p>
+                            ) : null}
+                            {summary.liftCount === 0 && summary.runCount === 0 ? (
+                              <p className="text-slate-400">-</p>
+                            ) : null}
+                          </>
+                        ) : (
+                          <p className="text-slate-400">-</p>
+                        )}
+                      </div>
                     ) : (
-                      <p>No activity</p>
+                      <div className="mt-2 space-y-1 text-[11px] text-slate-600">
+                        {summary ? (
+                          <>
+                            {summary.liftCount > 0 ? <p>Lifts: {summary.liftCount}</p> : null}
+                            {summary.runCount > 0 ? <p>Runs: {summary.runCount}</p> : null}
+                            {summary.milesHundredths > 0 ? (
+                              <p>{formatMilesFromHundredths(summary.milesHundredths)} mi</p>
+                            ) : null}
+                            {summary.liftTitles[0] ? (
+                              <p className="truncate font-medium">{summary.liftTitles[0]}</p>
+                            ) : null}
+                          </>
+                        ) : (
+                          <p className="text-slate-400">No activity</p>
+                        )}
+                      </div>
                     )}
-                  </div>
-                </Link>
-              );
-            })}
+                  </Link>
+                );
+              })}
+            </div>
           </div>
         </div>
       ) : null}
