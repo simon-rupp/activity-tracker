@@ -5,6 +5,7 @@ import { clearSessionCookie } from "@/lib/auth";
 
 const links = [
   { href: "/", label: "Calendar" },
+  { href: "/summary", label: "Summary" },
 ];
 
 async function logoutAction() {
