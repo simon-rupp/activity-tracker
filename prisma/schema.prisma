@@ -87,6 +87,7 @@ model RunSession {
 model User {
   id                      Int                      @id @default(autoincrement())
   email                   String                   @unique
+  googleSubject           String?                  @unique
   emailVerifiedAt         DateTime?
   passwordHash            String
   createdAt               DateTime                 @default(now())
