@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { requireCurrentUser } from "@/lib/auth";
 import { monthFromDateString } from "@/lib/date";
 import { parseRunPayload, parseSessionId } from "@/lib/forms";
 import { prisma } from "@/lib/prisma";
@@ -41,6 +42,7 @@ function getCalendarRedirect(formData: FormData, fallbackDate: string): string {
 }
 
 export async function createRunAction(formData: FormData) {
+  const user = await requireCurrentUser();
   let payload: ReturnType<typeof parseRunPayload>;
   try {
     payload = parseRunPayload(formData);
@@ -49,7 +51,10 @@ export async function createRunAction(formData: FormData) {
   }
 
   await prisma.runSession.create({
-    data: payload,
+    data: {
+      userId: user.id,
+      ...payload,
+    },
   });
 
   revalidatePath("/");
@@ -57,6 +62,7 @@ export async function createRunAction(formData: FormData) {
 }
 
 export async function updateRunAction(formData: FormData) {
+  const user = await requireCurrentUser();
   const returnTo = getFormString(formData, "returnTo") ?? "/runs/new";
   let id: number;
   let payload: ReturnType<typeof parseRunPayload>;
@@ -68,16 +74,24 @@ export async function updateRunAction(formData: FormData) {
     redirect(`${returnTo}?error=invalid`);
   }
 
-  await prisma.runSession.update({
-    where: { id },
+  const result = await prisma.runSession.updateMany({
+    where: {
+      id,
+      userId: user.id,
+    },
     data: payload,
   });
+
+  if (result.count === 0) {
+    redirect("/");
+  }
 
   revalidatePath("/");
   redirect(`/?month=${monthFromDateString(payload.date)}&day=${payload.date}`);
 }
 
 export async function deleteRunAction(formData: FormData) {
+  const user = await requireCurrentUser();
   let id: number;
   try {
     id = parseSessionId(formData);
@@ -85,8 +99,11 @@ export async function deleteRunAction(formData: FormData) {
     redirect("/");
   }
 
-  const currentSession = await prisma.runSession.findUnique({
-    where: { id },
+  const currentSession = await prisma.runSession.findFirst({
+    where: {
+      id,
+      userId: user.id,
+    },
     select: { date: true },
   });
 
@@ -94,8 +111,11 @@ export async function deleteRunAction(formData: FormData) {
     redirect("/");
   }
 
-  await prisma.runSession.delete({
-    where: { id },
+  await prisma.runSession.deleteMany({
+    where: {
+      id,
+      userId: user.id,
+    },
   });
 
   revalidatePath("/");

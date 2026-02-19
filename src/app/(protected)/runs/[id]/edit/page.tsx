@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 
+import { requireCurrentUser } from "@/lib/auth";
 import { formatDuration, formatMilesFromHundredths } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 
@@ -18,6 +19,7 @@ export default async function EditRunPage({
   params,
   searchParams,
 }: EditRunPageProps) {
+  const user = await requireCurrentUser();
   const routeParams = await params;
   const query = await searchParams;
 
@@ -26,8 +28,11 @@ export default async function EditRunPage({
     notFound();
   }
 
-  const run = await prisma.runSession.findUnique({
-    where: { id },
+  const run = await prisma.runSession.findFirst({
+    where: {
+      id,
+      userId: user.id,
+    },
   });
 
   if (!run) {

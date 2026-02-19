@@ -4,6 +4,7 @@ import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { requireCurrentUser } from "@/lib/auth";
 import { monthFromDateString } from "@/lib/date";
 import { parseLiftPayload, parseSessionId } from "@/lib/forms";
 import { prisma } from "@/lib/prisma";
@@ -55,6 +56,7 @@ function nameKey(value: string): string {
 
 async function resolveLiftEntries(
   tx: Prisma.TransactionClient,
+  userId: number,
   entries: ReturnType<typeof parseLiftPayload>["entries"],
 ): Promise<
   Array<{
@@ -67,6 +69,7 @@ async function resolveLiftEntries(
   }>
 > {
   const existingExercises = await tx.exercise.findMany({
+    where: { userId },
     select: {
       id: true,
       name: true,
@@ -89,6 +92,7 @@ async function resolveLiftEntries(
 
 
   const existingMuscleGroups = await tx.muscleGroup.findMany({
+    where: { userId },
     select: {
       id: true,
       name: true,
@@ -107,8 +111,16 @@ async function resolveLiftEntries(
 
     if (!exerciseId) {
       const exercise = await tx.exercise.upsert({
-        where: { name: normalizedName },
-        create: { name: normalizedName },
+        where: {
+          userId_name: {
+            userId,
+            name: normalizedName,
+          },
+        },
+        create: {
+          userId,
+          name: normalizedName,
+        },
         update: {},
         select: { id: true, name: true },
       });
@@ -125,8 +137,16 @@ async function resolveLiftEntries(
 
       if (!muscleGroupId) {
         const muscleGroup = await tx.muscleGroup.upsert({
-          where: { name: normalizedMuscleGroupName },
-          create: { name: normalizedMuscleGroupName },
+          where: {
+            userId_name: {
+              userId,
+              name: normalizedMuscleGroupName,
+            },
+          },
+          create: {
+            userId,
+            name: normalizedMuscleGroupName,
+          },
           update: {},
           select: { id: true },
         });
@@ -154,6 +174,7 @@ async function resolveLiftEntries(
 }
 
 export async function createLiftAction(formData: FormData) {
+  const user = await requireCurrentUser();
   let payload: ReturnType<typeof parseLiftPayload>;
   try {
     payload = parseLiftPayload(formData);
@@ -162,10 +183,11 @@ export async function createLiftAction(formData: FormData) {
   }
 
   await prisma.$transaction(async (tx) => {
-    const resolvedEntries = await resolveLiftEntries(tx, payload.entries);
+    const resolvedEntries = await resolveLiftEntries(tx, user.id, payload.entries);
 
     const liftSession = await tx.liftSession.create({
       data: {
+        userId: user.id,
         date: payload.date,
         title: payload.title,
         notes: payload.notes,
@@ -201,6 +223,7 @@ export async function createLiftAction(formData: FormData) {
 }
 
 export async function updateLiftAction(formData: FormData) {
+  const user = await requireCurrentUser();
   const returnTo = getFormString(formData, "returnTo") ?? "/lifts/new";
   let id: number;
   let payload: ReturnType<typeof parseLiftPayload>;
@@ -212,17 +235,24 @@ export async function updateLiftAction(formData: FormData) {
     redirect(`${returnTo}?error=invalid`);
   }
 
-  await prisma.$transaction(async (tx) => {
-    const resolvedEntries = await resolveLiftEntries(tx, payload.entries);
+  const didUpdate = await prisma.$transaction(async (tx) => {
+    const resolvedEntries = await resolveLiftEntries(tx, user.id, payload.entries);
 
-    await tx.liftSession.update({
-      where: { id },
+    const updateResult = await tx.liftSession.updateMany({
+      where: {
+        id,
+        userId: user.id,
+      },
       data: {
         date: payload.date,
         title: payload.title,
         notes: payload.notes,
       },
     });
+
+    if (updateResult.count === 0) {
+      return false;
+    }
 
     await tx.liftEntry.deleteMany({
       where: { liftSessionId: id },
@@ -250,13 +280,20 @@ export async function updateLiftAction(formData: FormData) {
         });
       }
     }
+
+    return true;
   });
+
+  if (!didUpdate) {
+    redirect("/");
+  }
 
   revalidatePath("/");
   redirect(`/?month=${monthFromDateString(payload.date)}&day=${payload.date}`);
 }
 
 export async function deleteLiftAction(formData: FormData) {
+  const user = await requireCurrentUser();
   let id: number;
   try {
     id = parseSessionId(formData);
@@ -264,8 +301,11 @@ export async function deleteLiftAction(formData: FormData) {
     redirect("/");
   }
 
-  const currentSession = await prisma.liftSession.findUnique({
-    where: { id },
+  const currentSession = await prisma.liftSession.findFirst({
+    where: {
+      id,
+      userId: user.id,
+    },
     select: { date: true },
   });
 
@@ -273,8 +313,11 @@ export async function deleteLiftAction(formData: FormData) {
     redirect("/");
   }
 
-  await prisma.liftSession.delete({
-    where: { id },
+  await prisma.liftSession.deleteMany({
+    where: {
+      id,
+      userId: user.id,
+    },
   });
 
   revalidatePath("/");

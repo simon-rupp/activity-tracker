@@ -1,8 +1,7 @@
 import Link from "next/link";
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
-import { SESSION_COOKIE_NAME } from "@/lib/auth-session";
+import { clearSessionCookie } from "@/lib/auth";
 
 const links = [
   { href: "/", label: "Calendar" },
@@ -11,12 +10,15 @@ const links = [
 async function logoutAction() {
   "use server";
 
-  const cookieStore = await cookies();
-  cookieStore.delete(SESSION_COOKIE_NAME);
-  redirect("/unlock");
+  await clearSessionCookie();
+  redirect("/login");
 }
 
-export function MainNav() {
+type MainNavProps = {
+  userEmail: string;
+};
+
+export function MainNav({ userEmail }: MainNavProps) {
   return (
     <header className="border-b border-slate-200 bg-white">
       <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3">
@@ -32,14 +34,17 @@ export function MainNav() {
           ))}
         </div>
 
-        <form action={logoutAction}>
-          <button
-            type="submit"
-            className="rounded-md border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-700 hover:border-slate-300 hover:bg-slate-50"
-          >
-            Lock
-          </button>
-        </form>
+        <div className="flex items-center gap-2">
+          <p className="text-sm text-slate-600">{userEmail}</p>
+          <form action={logoutAction}>
+            <button
+              type="submit"
+              className="rounded-md border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+            >
+              Log Out
+            </button>
+          </form>
+        </div>
       </div>
     </header>
   );

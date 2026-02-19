@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 
+import { requireCurrentUser } from "@/lib/auth";
 import { LiftForm } from "@/components/lift-form";
 import { formatWeightFromTenths } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
@@ -19,6 +20,7 @@ export default async function EditLiftPage({
   params,
   searchParams,
 }: EditLiftPageProps) {
+  const user = await requireCurrentUser();
   const routeParams = await params;
   const query = await searchParams;
 
@@ -28,8 +30,11 @@ export default async function EditLiftPage({
   }
 
   const [lift, exercises, muscleGroups] = await Promise.all([
-    prisma.liftSession.findUnique({
-      where: { id },
+    prisma.liftSession.findFirst({
+      where: {
+        id,
+        userId: user.id,
+      },
       include: {
         entries: {
           orderBy: { order: "asc" },
@@ -53,6 +58,7 @@ export default async function EditLiftPage({
       },
     }),
     prisma.exercise.findMany({
+      where: { userId: user.id },
       orderBy: { name: "asc" },
       select: {
         id: true,
@@ -60,6 +66,7 @@ export default async function EditLiftPage({
       },
     }),
     prisma.muscleGroup.findMany({
+      where: { userId: user.id },
       orderBy: { name: "asc" },
       select: {
         id: true,

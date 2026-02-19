@@ -1,4 +1,5 @@
 import { LiftForm } from "@/components/lift-form";
+import { requireCurrentUser } from "@/lib/auth";
 import { isValidDateString, todayDateString } from "@/lib/date";
 import { prisma } from "@/lib/prisma";
 import { resolveRequestTimeZone } from "@/lib/request-timezone";
@@ -13,6 +14,7 @@ type NewLiftPageProps = {
 };
 
 export default async function NewLiftPage({ searchParams }: NewLiftPageProps) {
+  const user = await requireCurrentUser();
   const params = await searchParams;
   const requestTimeZone = await resolveRequestTimeZone();
   const requestedDate =
@@ -22,13 +24,15 @@ export default async function NewLiftPage({ searchParams }: NewLiftPageProps) {
 
   const [exercises, muscleGroups] = await Promise.all([
     prisma.exercise.findMany({
-    orderBy: { name: "asc" },
-    select: {
-      id: true,
-      name: true,
-    },
+      where: { userId: user.id },
+      orderBy: { name: "asc" },
+      select: {
+        id: true,
+        name: true,
+      },
     }),
     prisma.muscleGroup.findMany({
+      where: { userId: user.id },
       orderBy: { name: "asc" },
       select: {
         id: true,
