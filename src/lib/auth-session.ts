@@ -82,11 +82,12 @@ export function getUserIdFromSessionToken(token: string | undefined): number | n
       return null;
     }
 
-    if (!Number.isInteger(payload.userId) || payload.userId <= 0) {
+    const userId = payload.userId;
+    if (typeof userId !== "number" || !Number.isInteger(userId) || userId <= 0) {
       return null;
     }
 
-    return payload.userId;
+    return userId;
   } catch {
     return null;
   }
