@@ -21,6 +21,9 @@ Activity Tracker is a Next.js app for tracking lifting and running workouts with
   - Mobile `3d`, `week`, and `month` views
   - Per-day detail panel with edit/delete actions
 - Summary page with `week`, `month`, and `all` ranges
+- Progressive Web App (PWA) support:
+  - Installable on iOS/Android/desktop browsers
+  - Offline fallback page when network is unavailable
 - Per-user data isolation across all models
 
 ## Tech Stack
@@ -135,6 +138,29 @@ npm run vercel-build
 - Lift weight: stored as pounds in tenths (`0.1` precision)
 - Run distance: stored as miles in hundredths (`0.01` precision)
 - Run duration input: `mm:ss` or `hh:mm:ss`
+
+## PWA Notes
+
+- Manifest: `src/app/manifest.ts`
+- Service worker: `public/sw.js` (registered in production builds only)
+- Offline fallback route: `src/app/offline/page.tsx`
+- App icons:
+  - `public/icon-192x192.png`
+  - `public/icon-512x512.png`
+  - `public/apple-touch-icon.png`
+
+To test install/offline behavior locally:
+
+1. Run a production build and server:
+
+```bash
+npm run build
+npm run start
+```
+
+2. Open the app in a supported browser.
+3. Use browser install flow (`Add to Home Screen` on iOS Safari).
+4. Disable network and navigate to confirm offline fallback works.
 
 ## Manual Smoke Tests
 
