@@ -185,6 +185,7 @@ export default async function SummaryPage({ searchParams }: SummaryPageProps) {
                   ? "border-slate-900 bg-slate-900 text-white"
                   : "border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50"
               }`}
+              style={isSelected ? { color: "#ffffff" } : undefined}
             >
               {option.label}
             </Link>

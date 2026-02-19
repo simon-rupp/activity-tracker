@@ -20,10 +20,12 @@ type MainNavProps = {
 };
 
 export function MainNav({ userEmail }: MainNavProps) {
+  const userEmailLocalPart = userEmail.split("@")[0] ?? userEmail;
+
   return (
     <header className="border-b border-slate-200 bg-white">
-      <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3">
-        <div className="flex flex-wrap items-center gap-2">
+      <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center gap-3 px-4 py-3 sm:justify-between">
+        <div className="order-2 flex w-full flex-wrap items-center gap-2 sm:order-1 sm:w-auto">
           {links.map((link) => (
             <Link
               key={link.href}
@@ -35,8 +37,11 @@ export function MainNav({ userEmail }: MainNavProps) {
           ))}
         </div>
 
-        <div className="flex items-center gap-2">
-          <p className="text-sm text-slate-600">{userEmail}</p>
+        <div className="order-1 ml-auto flex items-center gap-2 sm:order-2 sm:ml-0">
+          <p className="max-[359px]:hidden max-w-[12rem] truncate text-right text-sm text-slate-600">
+            <span className="sm:hidden">{userEmailLocalPart}</span>
+            <span className="hidden sm:inline">{userEmail}</span>
+          </p>
           <form action={logoutAction}>
             <button
               type="submit"
