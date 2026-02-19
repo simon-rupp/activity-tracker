@@ -1,18 +1,9 @@
-import bcrypt from "bcryptjs";
 import crypto from "node:crypto";
 
 export const SESSION_COOKIE_NAME = "activity_session";
 const SESSION_DURATION_SECONDS = 60 * 60 * 24 * 30;
 
-function isBcryptHash(value: string): boolean {
-  try {
-    return Number.isInteger(bcrypt.getRounds(value));
-  } catch {
-    return false;
-  }
-}
-
-function readEnv(name: "APP_SESSION_SECRET" | "APP_PASSCODE_HASH"): string | null {
+function readEnv(name: "APP_SESSION_SECRET"): string | null {
   const value = process.env[name];
   return value ? value : null;
 }
@@ -26,31 +17,22 @@ function signPayload(payload: string): string | null {
   return crypto.createHmac("sha256", secret).update(payload).digest("base64url");
 }
 
-export function isAuthConfigured(): boolean {
-  return getAuthConfigError() === null;
-}
-
 export function getAuthConfigError(): string | null {
   const secret = readEnv("APP_SESSION_SECRET");
-  const hash = readEnv("APP_PASSCODE_HASH");
-
   if (!secret) {
     return "APP_SESSION_SECRET is missing.";
-  }
-
-  if (!hash) {
-    return "APP_PASSCODE_HASH is missing.";
-  }
-
-  if (!isBcryptHash(hash)) {
-    return "APP_PASSCODE_HASH is malformed. In .env, escape each $ as \\$.";
   }
 
   return null;
 }
 
-export function createSessionToken(): string {
+export function createSessionToken(userId: number): string {
+  if (!Number.isInteger(userId) || userId <= 0) {
+    throw new Error("Invalid user ID.");
+  }
+
   const payload = JSON.stringify({
+    userId,
     exp: Date.now() + SESSION_DURATION_SECONDS * 1000,
   });
   const encodedPayload = Buffer.from(payload, "utf8").toString("base64url");
@@ -62,54 +44,51 @@ export function createSessionToken(): string {
   return `${encodedPayload}.${signature}`;
 }
 
-export function isValidSessionToken(token: string | undefined): boolean {
+export function getUserIdFromSessionToken(token: string | undefined): number | null {
   if (!token) {
-    return false;
+    return null;
   }
 
   const [encodedPayload, signature] = token.split(".");
   if (!encodedPayload || !signature) {
-    return false;
+    return null;
   }
 
   const expectedSignature = signPayload(encodedPayload);
   if (!expectedSignature) {
-    return false;
+    return null;
   }
 
   const providedBuffer = Buffer.from(signature);
   const expectedBuffer = Buffer.from(expectedSignature);
 
   if (providedBuffer.length !== expectedBuffer.length) {
-    return false;
+    return null;
   }
 
   if (!crypto.timingSafeEqual(providedBuffer, expectedBuffer)) {
-    return false;
+    return null;
   }
 
   try {
     const payload = JSON.parse(
       Buffer.from(encodedPayload, "base64url").toString("utf8"),
     ) as {
+      userId?: number;
       exp?: number;
     };
 
-    return typeof payload.exp === "number" && payload.exp > Date.now();
+    if (typeof payload.exp !== "number" || payload.exp <= Date.now()) {
+      return null;
+    }
+
+    const userId = payload.userId;
+    if (typeof userId !== "number" || !Number.isInteger(userId) || userId <= 0) {
+      return null;
+    }
+
+    return userId;
   } catch {
-    return false;
+    return null;
   }
-}
-
-export async function verifyPasscode(passcode: string): Promise<boolean> {
-  const hash = readEnv("APP_PASSCODE_HASH");
-  if (!hash) {
-    return false;
-  }
-
-  if (!isBcryptHash(hash)) {
-    return false;
-  }
-
-  return bcrypt.compare(passcode, hash);
 }

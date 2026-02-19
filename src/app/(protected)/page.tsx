@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { requireCurrentUser } from "@/lib/auth";
 import { ConfirmDeleteButton } from "@/components/confirm-delete-button";
 import {
   formatDateString,
@@ -93,6 +94,7 @@ function getDaySummary(summaryMap: Map<string, DaySummary>, date: string): DaySu
 }
 
 export default async function CalendarPage({ searchParams }: CalendarPageProps) {
+  const user = await requireCurrentUser();
   const params = await searchParams;
   const requestTimeZone = await resolveRequestTimeZone();
   const today = todayDateString(requestTimeZone);
@@ -150,6 +152,7 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
   const [lifts, runs] = await Promise.all([
     prisma.liftSession.findMany({
       where: {
+        userId: user.id,
         date: {
           gte: start,
           lte: end,
@@ -171,6 +174,7 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
     }),
     prisma.runSession.findMany({
       where: {
+        userId: user.id,
         date: {
           gte: start,
           lte: end,

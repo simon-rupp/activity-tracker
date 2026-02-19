@@ -9,28 +9,40 @@ datasource db {
 
 model Exercise {
   id        Int        @id @default(autoincrement())
-  name      String     @unique
+  userId    Int
+  name      String
   createdAt DateTime   @default(now())
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   entries   LiftEntry[]
+
+  @@unique([userId, name])
+  @@index([userId])
 }
 
 model MuscleGroup {
   id        Int                      @id @default(autoincrement())
-  name      String                   @unique
+  userId    Int
+  name      String
   createdAt DateTime                 @default(now())
+  user      User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
   entries   LiftEntryMuscleGroup[]
+
+  @@unique([userId, name])
+  @@index([userId])
 }
 
 model LiftSession {
   id        Int        @id @default(autoincrement())
+  userId    Int
   date      String
   title     String
   notes     String?
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   entries   LiftEntry[]
 
-  @@index([date])
+  @@index([userId, date])
 }
 
 model LiftEntry {
@@ -60,12 +72,53 @@ model LiftEntryMuscleGroup {
 
 model RunSession {
   id                 Int      @id @default(autoincrement())
+  userId             Int
   date               String
   distanceHundredths Int
   durationSeconds    Int
   notes              String?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([date])
+  @@index([userId, date])
+}
+
+model User {
+  id                      Int                      @id @default(autoincrement())
+  email                   String                   @unique
+  emailVerifiedAt         DateTime?
+  passwordHash            String
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  exercises               Exercise[]
+  muscleGroups            MuscleGroup[]
+  liftSessions            LiftSession[]
+  runSessions             RunSession[]
+  emailVerificationTokens EmailVerificationToken[]
+  passwordResetTokens     PasswordResetToken[]
+}
+
+model EmailVerificationToken {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model PasswordResetToken {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
 }

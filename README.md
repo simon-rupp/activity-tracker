@@ -1,12 +1,14 @@
 # Activity Tracker
 
-Single-user workout tracker for lifts and runs with:
+Workout tracker for lifts and runs with:
 
-- Passcode lock screen
-- Lift logging with reusable exercises
+- Email/password authentication (sign up, log in, log out)
+- Email verification and password reset by email
+- Lift logging with reusable exercises and muscle groups
 - Run logging in miles
 - Month calendar with per-day summaries
 - Edit/delete support from day details
+- Per-user data isolation for all workout data
 
 ## Tech Stack
 
@@ -29,30 +31,31 @@ npm install
 cp .env.example .env
 ```
 
-3. Set `DATABASE_URL` in `.env` to a PostgreSQL database.
+3. Set values in `.env`:
+   - `DATABASE_URL`
+   - `APP_SESSION_SECRET` (long random string)
+   - `APP_BASE_URL` (example: `http://localhost:3000`)
+   - `RESEND_API_KEY`
+   - `EMAIL_FROM`
 
-4. Generate a passcode hash:
+4. Configure Resend (free tier works):
+   - Create an API key in Resend.
+   - Use `onboarding@resend.dev` for testing sender in development.
+   - For production, configure your own verified sender/domain in Resend.
 
-```bash
-npm run hash:passcode -- your-passcode
-```
-
-5. Put the escaped output line into `.env` as `APP_PASSCODE_HASH`.
-   Next.js expands `$` in env files, so bcrypt hashes must use `\$`.
-
-6. Set a long random `APP_SESSION_SECRET` in `.env`.
-
-7. Apply migrations:
+5. Apply migrations:
 
 ```bash
 npm run prisma:migrate
 ```
 
-8. Start the app:
+6. Start the app:
 
 ```bash
 npm run dev
 ```
+
+7. Open the app and create an account on `/signup`.
 
 ## Deploying To Vercel + Prisma Postgres
 
@@ -60,8 +63,10 @@ npm run dev
 2. Add Prisma Postgres through the Vercel Marketplace and connect it to the project.
 3. Configure environment variables in Vercel:
    - `DATABASE_URL`
-   - `APP_PASSCODE_HASH`
    - `APP_SESSION_SECRET`
+   - `APP_BASE_URL` (optional but recommended; if omitted, app falls back to `VERCEL_BRANCH_URL` / `VERCEL_URL`)
+   - `RESEND_API_KEY`
+   - `EMAIL_FROM`
 4. Set build command to:
 
 ```bash
