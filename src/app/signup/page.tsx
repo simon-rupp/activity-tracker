@@ -7,6 +7,7 @@ import { sendEmailVerificationEmail } from "@/lib/auth-email";
 import { getCurrentUser } from "@/lib/auth";
 import { getAuthConfigError } from "@/lib/auth-session";
 import { getEmailConfigError } from "@/lib/email";
+import { getGoogleOAuthConfigError } from "@/lib/google-oauth";
 import { prisma } from "@/lib/prisma";
 
 type SignUpPageProps = {
@@ -93,6 +94,8 @@ export default async function SignUpPage({ searchParams }: SignUpPageProps) {
   const params = await searchParams;
   const authConfigError = getAuthConfigError();
   const emailConfigError = getEmailConfigError();
+  const googleConfigError = getGoogleOAuthConfigError();
+  const canUseGoogleOAuth = !googleConfigError;
 
   const errorMessage =
     params.error === "config"
@@ -123,7 +126,23 @@ export default async function SignUpPage({ searchParams }: SignUpPageProps) {
           Sign up to start tracking your lifts and runs.
         </p>
 
-        <form action={signUpAction} className="mt-5 space-y-4">
+        {canUseGoogleOAuth ? (
+          <>
+            <Link
+              href="/auth/google"
+              className="mt-5 flex w-full items-center justify-center rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+            >
+              Continue with Google
+            </Link>
+            <div className="mt-4 flex items-center gap-2">
+              <div className="h-px flex-1 bg-slate-200" />
+              <span className="text-xs font-medium uppercase tracking-wide text-slate-500">or</span>
+              <div className="h-px flex-1 bg-slate-200" />
+            </div>
+          </>
+        ) : null}
+
+        <form action={signUpAction} className={`${canUseGoogleOAuth ? "mt-4" : "mt-5"} space-y-4`}>
           <label className="block space-y-1">
             <span className="text-sm font-medium text-slate-700">Email</span>
             <input

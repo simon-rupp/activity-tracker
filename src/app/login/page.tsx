@@ -6,6 +6,7 @@ import { sendEmailVerificationEmail } from "@/lib/auth-email";
 import { getCurrentUser, setSessionCookie } from "@/lib/auth";
 import { getAuthConfigError } from "@/lib/auth-session";
 import { getEmailConfigError } from "@/lib/email";
+import { getGoogleOAuthConfigError } from "@/lib/google-oauth";
 import { prisma } from "@/lib/prisma";
 
 type LoginPageProps = {
@@ -117,6 +118,8 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   const params = await searchParams;
   const authConfigError = getAuthConfigError();
   const emailConfigError = getEmailConfigError();
+  const googleConfigError = getGoogleOAuthConfigError();
+  const canUseGoogleOAuth = !googleConfigError;
   const emailForResend =
     typeof params.email === "string" && isValidEmail(params.email)
       ? normalizeEmail(params.email)
@@ -124,6 +127,18 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   const errorMessage =
     params.error === "config"
       ? authConfigError ?? "APP_SESSION_SECRET is missing."
+      : params.error === "google-config"
+        ? googleConfigError ?? "Google sign-in is not configured."
+      : params.error === "google-state"
+        ? "Google sign-in session expired. Try again."
+      : params.error === "google-denied"
+        ? "Google sign-in was canceled."
+      : params.error === "google-unverified"
+        ? "Your Google account email is not verified."
+      : params.error === "google-link"
+        ? "This email is already linked to a different Google account."
+      : params.error === "google-auth"
+        ? "Google sign-in failed. Try again."
       : params.error === "email-config"
         ? emailConfigError ?? "Email delivery is not configured."
       : params.error === "email-send"
@@ -149,7 +164,23 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
         <h1 className="text-xl font-semibold text-slate-900">Log In</h1>
         <p className="mt-2 text-sm text-slate-600">Sign in to your activity tracker account.</p>
 
-        <form action={loginAction} className="mt-5 space-y-4">
+        {canUseGoogleOAuth ? (
+          <>
+            <Link
+              href="/auth/google"
+              className="mt-5 flex w-full items-center justify-center rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+            >
+              Continue with Google
+            </Link>
+            <div className="mt-4 flex items-center gap-2">
+              <div className="h-px flex-1 bg-slate-200" />
+              <span className="text-xs font-medium uppercase tracking-wide text-slate-500">or</span>
+              <div className="h-px flex-1 bg-slate-200" />
+            </div>
+          </>
+        ) : null}
+
+        <form action={loginAction} className={`${canUseGoogleOAuth ? "mt-4" : "mt-5"} space-y-4`}>
           <label className="block space-y-1">
             <span className="text-sm font-medium text-slate-700">Email</span>
             <input

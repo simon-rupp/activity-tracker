@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 
 export const SESSION_COOKIE_NAME = "activity_session";
-const SESSION_DURATION_SECONDS = 60 * 60 * 24 * 30;
+export const SESSION_DURATION_SECONDS = 60 * 60 * 24 * 30;
 
 function readEnv(name: "APP_SESSION_SECRET"): string | null {
   const value = process.env[name];

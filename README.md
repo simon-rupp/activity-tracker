@@ -3,6 +3,7 @@
 Workout tracker for lifts and runs with:
 
 - Email/password authentication (sign up, log in, log out)
+- Google OAuth authentication (sign up and log in)
 - Email verification and password reset by email
 - Lift logging with reusable exercises and muscle groups
 - Run logging in miles
@@ -37,25 +38,34 @@ cp .env.example .env
    - `APP_BASE_URL` (example: `http://localhost:3000`)
    - `RESEND_API_KEY`
    - `EMAIL_FROM`
+   - `GOOGLE_CLIENT_ID` (optional; required for Google sign-in)
+   - `GOOGLE_CLIENT_SECRET` (optional; required for Google sign-in)
 
 4. Configure Resend (free tier works):
    - Create an API key in Resend.
    - Use `onboarding@resend.dev` for testing sender in development.
    - For production, configure your own verified sender/domain in Resend.
 
-5. Apply migrations:
+5. Configure Google OAuth (only if using Google sign-in):
+   - Create an OAuth 2.0 Web application credential in Google Cloud.
+   - Add authorized redirect URIs:
+     - `http://localhost:3000/auth/google/callback` for local development.
+     - `https://<your-domain>/auth/google/callback` for deployed environments.
+   - Copy the client ID/secret into `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
+
+6. Apply migrations:
 
 ```bash
 npm run prisma:migrate
 ```
 
-6. Start the app:
+7. Start the app:
 
 ```bash
 npm run dev
 ```
 
-7. Open the app and create an account on `/signup`.
+8. Open the app and create an account on `/signup`.
 
 ## Deploying To Vercel + Prisma Postgres
 
@@ -67,6 +77,8 @@ npm run dev
    - `APP_BASE_URL` (optional but recommended; if omitted, app falls back to `VERCEL_BRANCH_URL` / `VERCEL_URL`)
    - `RESEND_API_KEY`
    - `EMAIL_FROM`
+   - `GOOGLE_CLIENT_ID` (optional)
+   - `GOOGLE_CLIENT_SECRET` (optional)
 4. Set build command to:
 
 ```bash
