@@ -7,25 +7,66 @@ type EmailPayload = {
 };
 
 function readEnv(
-  name: "APP_BASE_URL" | "RESEND_API_KEY" | "EMAIL_FROM",
+  name:
+    | "APP_BASE_URL"
+    | "RESEND_API_KEY"
+    | "EMAIL_FROM"
+    | "VERCEL_BRANCH_URL"
+    | "VERCEL_URL",
 ): string | null {
   const value = process.env[name];
   return value ? value : null;
 }
 
+function parseUrlOrigin(value: string | null): string | null {
+  if (!value) {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const withProtocol = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+
+  try {
+    return new URL(withProtocol).origin;
+  } catch {
+    return null;
+  }
+}
+
+function resolveAppBaseUrl(): string | null {
+  const appBaseUrl = readEnv("APP_BASE_URL");
+  if (appBaseUrl) {
+    return parseUrlOrigin(appBaseUrl);
+  }
+
+  const branchUrl = parseUrlOrigin(readEnv("VERCEL_BRANCH_URL"));
+  if (branchUrl) {
+    return branchUrl;
+  }
+
+  const deploymentUrl = parseUrlOrigin(readEnv("VERCEL_URL"));
+  if (deploymentUrl) {
+    return deploymentUrl;
+  }
+
+  return null;
+}
+
 export function getEmailConfigError(): string | null {
-  const baseUrl = readEnv("APP_BASE_URL");
+  const appBaseUrl = readEnv("APP_BASE_URL");
+  const baseUrl = resolveAppBaseUrl();
   const apiKey = readEnv("RESEND_API_KEY");
   const from = readEnv("EMAIL_FROM");
 
   if (!baseUrl) {
+    if (appBaseUrl) {
+      return "APP_BASE_URL must be a valid absolute URL.";
+    }
     return "APP_BASE_URL is missing.";
-  }
-
-  try {
-    new URL(baseUrl);
-  } catch {
-    return "APP_BASE_URL must be a valid absolute URL.";
   }
 
   if (!apiKey) {
@@ -40,13 +81,12 @@ export function getEmailConfigError(): string | null {
 }
 
 export function getAppBaseUrl(): string {
-  const baseUrl = readEnv("APP_BASE_URL");
+  const baseUrl = resolveAppBaseUrl();
   if (!baseUrl) {
     throw new Error("APP_BASE_URL is not configured.");
   }
 
-  const parsed = new URL(baseUrl);
-  return parsed.origin;
+  return baseUrl;
 }
 
 export async function sendEmail(payload: EmailPayload): Promise<void> {

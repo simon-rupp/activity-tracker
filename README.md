@@ -64,7 +64,7 @@ npm run dev
 3. Configure environment variables in Vercel:
    - `DATABASE_URL`
    - `APP_SESSION_SECRET`
-   - `APP_BASE_URL` (your Vercel URL or custom domain)
+   - `APP_BASE_URL` (optional but recommended; if omitted, app falls back to `VERCEL_BRANCH_URL` / `VERCEL_URL`)
    - `RESEND_API_KEY`
    - `EMAIL_FROM`
 4. Set build command to:
