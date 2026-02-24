@@ -1,60 +1,183 @@
-# Repository Guidelines
+# Agent Guide: Activity Tracker
 
-## Project Structure & Module Organization
-- `src/app` contains Next.js App Router routes.
-- Protected app routes live in `src/app/(protected)`:
-  - Calendar and day details: `src/app/(protected)/page.tsx`
-  - Summary dashboard: `src/app/(protected)/summary/page.tsx`
-  - Lift and run create/edit flows: `src/app/(protected)/lifts/*`, `src/app/(protected)/runs/*`
-- Auth and account recovery routes live in `src/app/login`, `src/app/signup`, `src/app/forgot-password`, `src/app/reset-password`, and `src/app/verify-email`.
-- Google OAuth routes are in `src/app/auth/google/route.ts` and `src/app/auth/google/callback/route.ts`.
-- `src/components` contains reusable UI components (forms, nav, delete confirmation, timezone sync).
-- `src/lib` contains business logic and utilities (auth/session, auth email flows, Google OAuth, parsing, formatting, timezone, Prisma client).
-- `prisma/schema.prisma` defines data models; SQL migrations are in `prisma/migrations/*`.
-- `public` stores static assets.
+This file is for future Codex/human contributors to ramp up quickly and make safe changes.
 
-## Build, Test, and Development Commands
-- `npm install`: install dependencies (also runs Prisma client generation via `postinstall`).
-- `npm run dev`: run local development server.
-- `npm run lint`: run ESLint checks.
-- `npm run build`: create production build.
-- `npm run start`: run production server.
-- `npm run prisma:generate`: regenerate Prisma client.
-- `npm run prisma:migrate`: create/apply migration in development.
-- `npm run prisma:migrate:deploy`: apply existing migrations (deployment/CI use).
-- `npm run vercel-build`: Vercel build pipeline (`prisma generate`, `migrate deploy`, `next build`).
+## 1) App Summary
 
-## Coding Style & Naming Conventions
-- Use TypeScript with strict typing and explicit payload parsing for forms/actions.
-- Use 2-space indentation, semicolons, and consistent import ordering.
-- Prefer `@/*` imports for `src` paths.
-- Follow Next.js naming conventions: `page.tsx`, `layout.tsx`, `route.ts`, `actions.ts`.
-- Use `camelCase` for functions/variables, `PascalCase` for components/types.
+Activity Tracker is a Next.js 16 App Router application for authenticated users to log lift and run workouts.
 
-## Testing Guidelines
-- No automated test framework is configured yet.
-- Required pre-PR checks: `npm run lint` and manual smoke tests for:
-  - sign up, log in, and log out
-  - email verification and resend verification link
-  - forgot/reset password flow
-  - Google OAuth sign-in (when OAuth env vars are configured)
-  - create/edit/delete lifts
-  - create/edit/delete runs
-  - calendar navigation (`3d`, `week`, `month`) and selected-day detail panel
+Core product capabilities:
+
+- Email/password auth with verification, resend verification, forgot/reset password
+- Optional Google OAuth login/signup
+- Lift logging with multi-row exercise entries and reusable muscle groups
+- Run logging with distance + duration tracking
+- Calendar-first review (`3d`, `week`, `month` on mobile; month grid on desktop)
+- Summary analytics (`week`, `month`, `all`)
+- PWA installability + offline fallback route
+
+## 2) Read-First File Order
+
+If you are new to the repo, read in this order:
+
+1. `README.md`
+2. `prisma/schema.prisma`
+3. `src/lib/auth-session.ts`
+4. `src/lib/auth.ts`
+5. `src/lib/auth-email.ts`
+6. `src/lib/forms.ts`
+7. `src/app/(protected)/page.tsx`
+8. `src/app/(protected)/summary/page.tsx`
+9. `src/app/(protected)/lifts/actions.ts`
+10. `src/app/(protected)/runs/actions.ts`
+
+## 3) Project Structure
+
+- `src/app`: route tree
+  - `src/app/(protected)`: authenticated app shell and pages
+  - `src/app/login`, `signup`, `forgot-password`, `reset-password`, `verify-email`
+  - `src/app/auth/google/route.ts`, `src/app/auth/google/callback/route.ts`
+  - `src/app/manifest.ts`, `src/app/offline/page.tsx`, `src/app/unlock/page.tsx`
+- `src/components`: reusable UI (`LiftForm`, nav, confirm delete, timezone sync, PWA register)
+- `src/lib`: auth/session/email/oauth, form parsing, formatting, timezone/date helpers, Prisma client
+- `prisma/schema.prisma`: data model
+- `prisma/migrations/*`: SQL history
+- `public/sw.js`: service worker
+
+## 4) Critical Invariants
+
+Do not violate these invariants:
+
+- Every user-facing data query/mutation must be ownership-scoped (`userId`) unless intentionally global.
+- Protected pages should rely on `requireCurrentUser()` from `src/lib/auth.ts`.
+- Authenticated user must also be email-verified (`emailVerifiedAt`) to pass `getCurrentUser()`.
+- Session token format/signature must remain compatible with `createSessionToken` and `getUserIdFromSessionToken`.
+- Dates are stored as `YYYY-MM-DD` strings (not DB date type). Keep lexical range semantics in mind.
+- Lift weight is integer tenths (`weightTenths`) and run distance is integer hundredths (`distanceHundredths`).
+- Run duration is stored as seconds from validated `mm:ss` or `hh:mm:ss` input.
+- Lift create/update should continue to upsert exercise/muscle-group suggestions per user.
+- OAuth callback must validate `state` via cookie before exchanging code.
+- Token emails use hashed tokens in DB, never raw tokens.
+
+## 5) Auth And Session Model
+
+- Cookie name: `activity_session`
+- Session payload: `{ userId, exp }`, base64url-encoded + HMAC SHA-256 signature (`APP_SESSION_SECRET`)
+- Login route checks password hash and verified email
+- Sign-up sends verification email and does not auto-login
+- Forgot-password and resend-verification flows should avoid account enumeration
+- Google OAuth behavior:
+  - start route sets `google_oauth_state` cookie
+  - callback validates state, fetches profile, enforces Google email verification
+  - links by `googleSubject`, or by matching email if not already linked elsewhere
+
+## 6) Domain Model Notes
+
+Main tables:
+
+- `User`
+- `Exercise` (`@@unique([userId, name])`)
+- `MuscleGroup` (`@@unique([userId, name])`)
+- `LiftSession` -> `LiftEntry` -> `LiftEntryMuscleGroup`
+- `RunSession`
+- `EmailVerificationToken`
+- `PasswordResetToken`
+
+Migration note:
+
+- `20260219000000_add_users_auth` intentionally drops and recreates workout/auth tables to enforce per-user ownership.
+
+## 7) Routing + UI Responsibilities
+
+- `src/app/(protected)/layout.tsx`: auth gate + top nav + timezone cookie sync
+- `src/app/(protected)/page.tsx`: calendar, summaries per day, selected-day details, delete actions
+- `src/app/(protected)/summary/page.tsx`: aggregate stats by range
+- `src/app/(protected)/lifts/*` + `runs/*`: create/edit screens
+- `src/components/lift-form.tsx`: dynamic client lift entries with suggestion UX
+
+## 8) Time Zone Behavior
+
+- Time zone source order:
+  1. `activity_tracker_tz` cookie
+  2. request headers (`x-time-zone`, `x-vercel-ip-timezone`)
+  3. server fallback
+- `todayDateString(timeZone)` drives defaults and summary windows.
+- `TimeZoneCookieSync` sets cookie from browser and triggers `router.refresh()`.
+
+## 9) PWA / Offline Behavior
+
+- Service worker registered only in production (`PwaRegister`).
+- `public/sw.js`:
+  - pre-caches offline page + icons + manifest
+  - network-first for navigation
+  - cache-first for static assets
+- Offline fallback route is `/offline`.
+
+## 10) Dev Commands
+
+- `npm install`
+- `npm run dev`
+- `npm run lint`
+- `npm run build`
+- `npm run start`
+- `npm run prisma:generate`
+- `npm run prisma:migrate`
+- `npm run prisma:migrate:deploy`
+- `npm run vercel-build`
+
+## 11) Expected Verification Before PR
+
+No automated test suite is configured yet.
+
+Required checks:
+
+- `npm run lint`
+- manual smoke tests:
+  - sign up, verify email, login/logout
+  - resend verification link
+  - forgot/reset password
+  - Google OAuth flow (if env configured)
+  - create/edit/delete lifts and runs
+  - calendar view switching (`3d`, `week`, `month`) + day details
   - summary range switching (`week`, `month`, `all`)
-- If adding tests, place them near the feature (example: `src/lib/date.test.ts`) and add a corresponding npm script.
 
-## Commit & Pull Request Guidelines
-- Keep commits short, focused, and imperative (example: `fix timezone fallback`).
-- Prefer one logical change per commit.
-- PRs should include:
-  - what changed and why
-  - any migration or env var changes
-  - screenshots/GIFs for UI updates
-  - verification steps and commands run
+## 12) Safe Change Playbooks
 
-## Security & Configuration Tips
-- Never commit `.env` files or secrets.
-- Required env vars for local development: `DATABASE_URL`, `APP_SESSION_SECRET`, `APP_BASE_URL`, `RESEND_API_KEY`, `EMAIL_FROM`.
-- Optional env vars: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` (required only for Google sign-in).
-- For Resend local testing, `onboarding@resend.dev` is a valid sender for `EMAIL_FROM`.
+When adding/changing features:
+
+- New protected page:
+  - place under `src/app/(protected)/...`
+  - rely on layout auth gate
+  - scope all Prisma queries by `user.id`
+- New form payload:
+  - add parse/validation in `src/lib/forms.ts`
+  - keep strict server-side checks even if client validates
+- New auth/email behavior:
+  - implement in `src/lib/auth-email.ts`
+  - preserve hashed token pattern and TTL cleanup
+- New data model fields:
+  - update `prisma/schema.prisma`
+  - create migration
+  - update relevant parse/format/UI logic together
+
+## 13) Security And Config
+
+- Never commit `.env` or secrets.
+- Required env vars:
+  - `DATABASE_URL`
+  - `APP_SESSION_SECRET`
+  - `APP_BASE_URL`
+  - `RESEND_API_KEY`
+  - `EMAIL_FROM`
+- Optional:
+  - `GOOGLE_CLIENT_ID`
+  - `GOOGLE_CLIENT_SECRET`
+- Local Resend sender option: `onboarding@resend.dev`
+
+## 14) Practical Gotchas
+
+- PowerShell path handling:
+  - paths with `(protected)` and `[id]` may require `-LiteralPath`.
+- Avoid editing generated artifacts:
+  - `.next/**`, `node_modules/**`, Prisma generated internals unless intentionally regenerated.
+- Keep import aliases as `@/*` for `src`.
