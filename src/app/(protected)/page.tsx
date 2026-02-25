@@ -19,7 +19,11 @@ import {
 import { prisma } from "@/lib/prisma";
 import { resolveRequestTimeZone } from "@/lib/request-timezone";
 
-import { deleteLiftAction } from "@/app/(protected)/lifts/actions";
+import {
+  deleteLiftAction,
+  saveLiftTemplateAction,
+  unsaveLiftTemplateAction,
+} from "@/app/(protected)/lifts/actions";
 import { deleteRunAction } from "@/app/(protected)/runs/actions";
 
 type CalendarPageProps = {
@@ -219,6 +223,24 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
 
   const selectedLifts = lifts.filter((lift) => lift.date === selectedDay);
   const selectedRuns = runs.filter((run) => run.date === selectedDay);
+  const selectedLiftIds = selectedLifts.map((lift) => lift.id);
+  const savedLiftIds = new Set(
+    (
+      selectedLiftIds.length > 0
+        ? await prisma.savedLift.findMany({
+            where: {
+              userId: user.id,
+              liftSessionId: {
+                in: selectedLiftIds,
+              },
+            },
+            select: {
+              liftSessionId: true,
+            },
+          })
+        : []
+    ).map((savedLift) => savedLift.liftSessionId),
+  );
 
   return (
     <section className="space-y-6">
@@ -450,64 +472,94 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
         <h2 className="text-lg font-semibold text-slate-900">{selectedDay}</h2>
 
         <div className="space-y-3">
-          {selectedLifts.map((lift) => (
-            <article
-              key={`lift-${lift.id}`}
-              className="rounded-md border border-slate-200 p-3"
-            >
-              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                <h3 className="font-semibold text-slate-900">{lift.title}</h3>
-                <div className="flex gap-2">
-                  <Link
-                    href={`/lifts/${lift.id}/edit`}
-                    className="rounded-md border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
-                  >
-                    Edit
-                  </Link>
-                  <form action={deleteLiftAction}>
-                    <input type="hidden" name="id" value={lift.id} />
-                    <input type="hidden" name="redirectMonth" value={month} />
-                    <input type="hidden" name="redirectDay" value={selectedDay} />
-                    <input type="hidden" name="redirectView" value={mobileView} />
-                    <ConfirmDeleteButton
-                      label="Delete"
-                      className="rounded-md border border-red-200 px-2 py-1 text-xs font-semibold text-red-700 hover:bg-red-50"
-                      message="Delete this lift permanently?"
-                    />
-                  </form>
+          {selectedLifts.map((lift) => {
+            const isSavedLift = savedLiftIds.has(lift.id);
+            const saveAction = isSavedLift
+              ? unsaveLiftTemplateAction
+              : saveLiftTemplateAction;
+            const saveLabel = isSavedLift ? "Saved" : "Save";
+
+            return (
+              <article
+                key={`lift-${lift.id}`}
+                className="rounded-md border border-slate-200 p-3"
+              >
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                  <h3 className="font-semibold text-slate-900">{lift.title}</h3>
+                  <div className="flex gap-2">
+                    <Link
+                      href={`/lifts/new?templateId=${lift.id}`}
+                      className="rounded-md border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                    >
+                      Reuse
+                    </Link>
+                    <form action={saveAction}>
+                      <input type="hidden" name="id" value={lift.id} />
+                      <input type="hidden" name="redirectMonth" value={month} />
+                      <input type="hidden" name="redirectDay" value={selectedDay} />
+                      <input type="hidden" name="redirectView" value={mobileView} />
+                      <button
+                        type="submit"
+                        className={`rounded-md border px-2 py-1 text-xs font-semibold ${
+                          isSavedLift
+                            ? "border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                            : "border-slate-300 text-slate-700 hover:bg-slate-50"
+                        }`}
+                      >
+                        {saveLabel}
+                      </button>
+                    </form>
+                    <Link
+                      href={`/lifts/${lift.id}/edit`}
+                      className="rounded-md border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                    >
+                      Edit
+                    </Link>
+                    <form action={deleteLiftAction}>
+                      <input type="hidden" name="id" value={lift.id} />
+                      <input type="hidden" name="redirectMonth" value={month} />
+                      <input type="hidden" name="redirectDay" value={selectedDay} />
+                      <input type="hidden" name="redirectView" value={mobileView} />
+                      <ConfirmDeleteButton
+                        label="Delete"
+                        className="rounded-md border border-red-200 px-2 py-1 text-xs font-semibold text-red-700 hover:bg-red-50"
+                        message="Delete this lift permanently?"
+                      />
+                    </form>
+                  </div>
                 </div>
-              </div>
 
-              {lift.notes ? (
-                <p className="mb-2 text-sm text-slate-600">{lift.notes}</p>
-              ) : null}
+                {lift.notes ? (
+                  <p className="mb-2 text-sm text-slate-600">{lift.notes}</p>
+                ) : null}
 
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[360px] border-collapse text-sm">
-                  <thead>
-                    <tr className="border-b border-slate-200 text-left text-xs uppercase text-slate-500">
-                      <th className="py-1">Exercise</th>
-                      <th className="py-1">Sets</th>
-                      <th className="py-1">Reps</th>
-                      <th className="py-1">Weight (lbs)</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {lift.entries.map((entry) => (
-                      <tr key={entry.id} className="border-b border-slate-100">
-                        <td className="py-1 text-slate-800">{entry.exercise.name}</td>
-                        <td className="py-1 text-slate-800">{entry.sets}</td>
-                        <td className="py-1 text-slate-800">{entry.reps}</td>
-                        <td className="py-1 text-slate-800">
-                          {formatWeightFromTenths(entry.weightTenths)}
-                        </td>
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[360px] border-collapse text-sm">
+                    <thead>
+                      <tr className="border-b border-slate-200 text-left text-xs uppercase text-slate-500">
+                        <th className="py-1">Exercise</th>
+                        <th className="py-1">Sets</th>
+                        <th className="py-1">Reps</th>
+                        <th className="py-1">Weight (lbs)</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </article>
-          ))}
+                    </thead>
+                    <tbody>
+                      {lift.entries.map((entry) => (
+                        <tr key={entry.id} className="border-b border-slate-100">
+                          <td className="py-1 text-slate-800">{entry.exercise.name}</td>
+                          <td className="py-1 text-slate-800">{entry.sets}</td>
+                          <td className="py-1 text-slate-800">{entry.reps}</td>
+                          <td className="py-1 text-slate-800">
+                            {formatWeightFromTenths(entry.weightTenths)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </article>
+            );
+          })}
 
           {selectedRuns.map((run) => (
             <article
