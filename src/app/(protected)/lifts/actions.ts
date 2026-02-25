@@ -323,3 +323,82 @@ export async function deleteLiftAction(formData: FormData) {
   revalidatePath("/");
   redirect(getCalendarRedirect(formData, currentSession.date));
 }
+
+export async function saveLiftTemplateAction(formData: FormData) {
+  const user = await requireCurrentUser();
+  let id: number;
+  try {
+    id = parseSessionId(formData);
+  } catch {
+    redirect("/");
+  }
+
+  const currentSession = await prisma.liftSession.findFirst({
+    where: {
+      id,
+      userId: user.id,
+    },
+    select: {
+      id: true,
+      date: true,
+    },
+  });
+
+  if (!currentSession) {
+    redirect("/");
+  }
+
+  await prisma.savedLift.upsert({
+    where: {
+      userId_liftSessionId: {
+        userId: user.id,
+        liftSessionId: currentSession.id,
+      },
+    },
+    create: {
+      userId: user.id,
+      liftSessionId: currentSession.id,
+    },
+    update: {},
+  });
+
+  revalidatePath("/");
+  revalidatePath("/lifts/new");
+  redirect(getCalendarRedirect(formData, currentSession.date));
+}
+
+export async function unsaveLiftTemplateAction(formData: FormData) {
+  const user = await requireCurrentUser();
+  let id: number;
+  try {
+    id = parseSessionId(formData);
+  } catch {
+    redirect("/");
+  }
+
+  const currentSession = await prisma.liftSession.findFirst({
+    where: {
+      id,
+      userId: user.id,
+    },
+    select: {
+      id: true,
+      date: true,
+    },
+  });
+
+  if (!currentSession) {
+    redirect("/");
+  }
+
+  await prisma.savedLift.deleteMany({
+    where: {
+      userId: user.id,
+      liftSessionId: currentSession.id,
+    },
+  });
+
+  revalidatePath("/");
+  revalidatePath("/lifts/new");
+  redirect(getCalendarRedirect(formData, currentSession.date));
+}
