@@ -21,15 +21,16 @@ Core product capabilities:
 If you are new to the repo, read in this order:
 
 1. `README.md`
-2. `prisma/schema.prisma`
-3. `src/lib/auth-session.ts`
-4. `src/lib/auth.ts`
-5. `src/lib/auth-email.ts`
-6. `src/lib/forms.ts`
-7. `src/app/(protected)/page.tsx`
-8. `src/app/(protected)/summary/page.tsx`
-9. `src/app/(protected)/lifts/actions.ts`
-10. `src/app/(protected)/runs/actions.ts`
+2. `architecture.md`
+3. `prisma/schema.prisma`
+4. `src/lib/auth-session.ts`
+5. `src/lib/auth.ts`
+6. `src/lib/auth-email.ts`
+7. `src/lib/forms.ts`
+8. `src/app/(protected)/page.tsx`
+9. `src/app/(protected)/summary/page.tsx`
+10. `src/app/(protected)/lifts/actions.ts`
+11. `src/app/(protected)/runs/actions.ts`
 
 ## 3) Project Structure
 
