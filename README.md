@@ -2,6 +2,18 @@
 
 Activity Tracker is a Next.js app for logging lifts and runs with strict per-user data isolation, account verification, and calendar-first review.
 
+## Mobile Screenshots
+
+Captured at a mobile viewport size of `390x844`.
+
+| 3-Day Calendar | Week Calendar |
+| --- | --- |
+| ![Mobile 3-day calendar view](docs/screenshots/mobile-calendar-3day.png) | ![Mobile week calendar view](docs/screenshots/mobile-calendar-week.png) |
+
+| Month Calendar | Summary |
+| --- | --- |
+| ![Mobile month calendar view](docs/screenshots/mobile-calendar-month.png) | ![Mobile summary view](docs/screenshots/mobile-summary.png) |
+
 ## What The App Does
 
 - Supports account auth with:
@@ -248,4 +260,3 @@ Run before PRs:
 
 
 Codex test branch line.
-
