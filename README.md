@@ -6,13 +6,13 @@ Activity Tracker is a Next.js app for logging lifts and runs with strict per-use
 
 Captured at a mobile viewport size of `390x844`.
 
-| 3-Day Calendar | Week Calendar |
-| --- | --- |
-| ![Mobile 3-day calendar view](docs/screenshots/mobile-calendar-3day.png) | ![Mobile week calendar view](docs/screenshots/mobile-calendar-week.png) |
+### 3-Day Calendar (Lift + Run On Same Day)
 
-| Month Calendar | Summary |
-| --- | --- |
-| ![Mobile month calendar view](docs/screenshots/mobile-calendar-month.png) | ![Mobile summary view](docs/screenshots/mobile-summary.png) |
+![Mobile 3-day calendar view with both a lift and run](docs/screenshots/mobile-calendar-3day-mixed.png)
+
+### Summary (Past Week)
+
+![Mobile summary week view](docs/screenshots/mobile-summary-week.png)
 
 ## What The App Does
 
